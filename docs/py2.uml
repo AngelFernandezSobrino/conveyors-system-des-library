@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>Python</ID>
+  <OriginalElement>#C:/Users/AngelFernandez/PycharmProjects/TFMV2/Sim.py</OriginalElement>
+  <nodes>
+    <node x="0.0" y="0.0">Sim.Simulador01</node>
+    <node x="-275.0" y="40.0">Clases.Retenedor</node>
+    <node x="0.0" y="779.0">Clases.Bandeja</node>
+    <node x="704.0" y="0.0">Clases.Output</node>
+  </nodes>
+  <notes />
+  <edges />
+  <settings layout="Balloon" zoom="1.0" x="502.5" y="514.5" />
+  <SelectedNodes>
+    <node>Clases.Retenedor</node>
+  </SelectedNodes>
+  <Categories>
+    <Category>Methods</Category>
+    <Category>Inner Classes</Category>
+    <Category>Fields</Category>
+  </Categories>
+</Diagram>
+
