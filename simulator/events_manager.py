@@ -1,17 +1,18 @@
 class EventsManager:
 
     def __init__(self):
-        self.events_queue = {}
+        self.events_queue = []
 
-    def push(self, step, event, args):
-        if step in self.events_queue:
-            self.events_queue[step] += [{'event': event, 'args': args}]
+    def push(self, event, args):
+        if len(self.events_queue) > 0:
+            self.events_queue += [{'event': event, 'args': args}]
         else:
-            self.events_queue[step] = [event]
+            self.events_queue = [event]
 
     def run(self):
-        for event in self.events_queue:
-            event['event'](event['args'])
+        while len(self.events_queue) > 0:
+            with self.events_queue.pop() as event:
+                event['event'](event['args'])
 
 
 if __name__ == "__main__":
