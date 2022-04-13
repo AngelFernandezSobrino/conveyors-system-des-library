@@ -1,46 +1,39 @@
+from typing import Dict
+
 from timed_events_manager import TimedEventsManager
 
-from stopper import StopperInfo, Stopper
+from stopper import StopperInfo, Stopper, SystemDescription
+from tray import Tray
 
 
 class Core:
 
-    def __init__(self, topology: list[StopperInfo]) -> None:
+    def __init__(self, system_description: SystemDescription) -> None:
 
-        self.systemData = []
+        self.system_description = system_description
+
+        self.stop = False
+
+        self.simulation_data = {}
         self.events_manager = TimedEventsManager()
-        self.topology = topology
 
-        for i, stopper in enumerate(topology):
-            self.systemData.append(
-                Stopper(i, self.topology, self.systemData,
-                        self.events_manager))
+        for stopper_id, stopper_description in system_description.items():
+            self.simulation_data[stopper_id] = Stopper(stopper_id, system_description, self.simulation_data,
+                                                       self.events_manager, False)
+
+    def run_for_steps(self, steps: int) -> None:
+        for i in range(0, steps):
+            self.events_manager.run()
+
+    def run_until_stopped(self, stop) -> None:
+        self.stop = stop
+        while not stop:
+            self.events_manager.run()
 
 
 if __name__ == '__main__':
+    from test_utils import system_description_example
 
-    topology = [{
-        'destiny': [1],
-        'steps': [8],
-        'behaviour': [1],
-        'rest_steps': [1]
-    }, {
-        'destiny': [2],
-        'steps': [8],
-        'behaviour': [1],
-        'rest_steps': [1]
-    }, {
-        'destiny': [3],
-        'steps': [8],
-        'behaviour': [1],
-        'rest_steps': [1]
-    }, {
-        'destiny': [0],
-        'steps': [8],
-        'behaviour': [1],
-        'rest_steps': [1]
-    }]
+    core = Core(system_description_example)
 
-    core = Core(topology)
-
-    print(core.systemData)
+    core.run_for_steps(200)

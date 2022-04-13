@@ -1,55 +1,61 @@
 from timed_events_manager import TimedEventsManager
 from tray import Tray
-from typing import TypedDict, Dict, List
+from typing import TypedDict, Dict
 
 
 class StopperInfo(TypedDict):
-    id: str
-    destiny: list[int]
+    destiny: list[str]
     steps: list[int]
-    behaviour: list[str]
+    move_behaviour: list[str]
     rest_steps: list[int]
+    default_locked: bool
+
+
+SystemDescription = Dict[str, StopperInfo]
 
 
 class Stopper:
 
-    def __init__(self, stopper_id: int, topology: list[StopperInfo],
+    def __init__(self, external_stopper_id: str, simulation_description: SystemDescription,
                  simulation: dict, events_register: TimedEventsManager, debug):
         self.debug = debug
 
-        self.stopper_id = stopper_id
+        self.stopper_id = external_stopper_id
         self.simulation = simulation
-        self.topology = topology[stopper_id]
+        self.description = simulation_description[external_stopper_id]
 
-        self.output_ids = topology[stopper_id]['destiny']
+        self.output_ids = simulation_description[external_stopper_id]['destiny']
 
         self.steps = {
             self.output_ids[k]: v
-            for k, v in enumerate(self.topology['steps'])
+            for k, v in enumerate(self.description['steps'])
         }
         self.rest_steps = {
             self.output_ids[k]: v
-            for k, v in enumerate(self.topology['rest_steps'])
+            for k, v in enumerate(self.description['rest_steps'])
         }
-        self.behaviour = {
+        self.move_behaviour = {
             self.output_ids[k]: v
-            for k, v in enumerate(self.topology['behaviour'])
+            for k, v in enumerate(self.description['move_behaviour'])
         }
+
+        self.default_locked = self.description['default_locked']
 
         self.events_register = events_register
 
         self.rest = True
         self.request = False
-        self.move = {v: False for v in self.topology['destiny']}
-        self.stop = {v: False for v in self.topology['destiny']}
+        self.move = {v: False for v in self.description['destiny']}
+        self.stop = {v: True if self.description['default_locked'] else False for v in self.description['destiny']}
 
-        self.output_trays = {v: False for v in self.topology['destiny']}
+        self.output_trays = {v: False for v in self.description['destiny']}
 
         self.input_tray = False
         self.input_ids = []
-        for stopper_info in topology:
-            if stopper_id in stopper_info['destiny']:
-                self.input_ids += [stopper_info['id']]
+
+        for external_stopper_id, stopper_info in simulation_description.items():
+            if self.stopper_id in stopper_info['destiny']:
+                self.input_ids += [external_stopper_id]
 
     def check_request(self):
         if not self.request:
@@ -71,9 +77,10 @@ class Stopper:
         self.move[destiny] = True
         self.output_trays[destiny] = self.input_tray
         self.input_tray = False
-        print(self.stopper_id, destiny)
         self.events_register.push(self.end_move, {'destiny': destiny}, self.steps[destiny])
-        if self.behaviour == 'fast':
+        if self.default_locked:
+            self.lock(destiny)
+        if self.move_behaviour == 'fast':
             self.events_register.push(self.return_rest, {},
                                       self.rest_steps[destiny])
 
@@ -100,7 +107,7 @@ class Stopper:
         self.move[args['destiny']] = False
         self.simulation[args['destiny']].input(self.output_trays[args['destiny']])
         self.output_trays[args['destiny']] = False
-        if self.behaviour != 'fast':
+        if self.move_behaviour != 'fast':
             self.return_rest()
 
     def lock(self, output_id):
@@ -116,40 +123,18 @@ if __name__ == '__main__':
 
     events_manager = TimedEventsManager()
 
-    simulation_example = {}
+    simulation_data_example = {}
 
-    topology_example: list[StopperInfo] = [{
-        'id': 0,
-        'destiny': [1],
-        'steps': [8],
-        'behaviour': ['fast'],
-        'rest_steps': [1]
-    }, {
-        'id': 1,
-        'destiny': [2],
-        'steps': [8],
-        'behaviour': ['fast'],
-        'rest_steps': [1]
-    }, {
-        'id': 2,
-        'destiny': [3],
-        'steps': [8],
-        'behaviour': ['fast'],
-        'rest_steps': [1]
-    }, {
-        'id': 3,
-        'destiny': [0],
-        'steps': [8],
-        'behaviour': ['fast'],
-        'rest_steps': [1]
-    }]
+    from test_utils import system_description_example
 
-    for i in range(0, 4):
-        simulation_example[i] = Stopper(i, topology_example, simulation_example, events_manager)
+    for stopper_id, stopper_description in system_description_example.items():
+        simulation_data_example[stopper_id] = Stopper(stopper_id, system_description_example, simulation_data_example,
+                                                      events_manager, False)
+        print(stopper_id)
+        print(simulation_data_example[stopper_id])
+
+    simulation_data_example['0'].input(Tray(23, 2))
+
+    for i in range(0, 20000):
         print(i)
-        print(simulation_example[i])
-
-    simulation_example[0].input(Tray(23, 2))
-
-    for i in range(0, 200):
         events_manager.run()
