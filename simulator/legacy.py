@@ -1,5 +1,5 @@
 import copy
-import Utilities as Ut
+from legacy import Utilities as Ut
 
 
 class Tray:
@@ -49,7 +49,7 @@ class Stopper:
             self.outputTrays += [-1]
 
         for i in topology:
-            if stopperId in topology[i]:
+            if stopperId in topology[ i]:
                 self.inputs += [i]
 
     def lock(self, salida):

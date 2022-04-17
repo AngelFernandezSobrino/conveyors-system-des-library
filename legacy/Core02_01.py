@@ -1,7 +1,6 @@
-import Sim
+from legacy import Sim, Utilities as Ut
 import copy
 import RedNeuronal
-import Utilities as Ut
 
 # Modelo02_01 control de bifurcaciones - Genetico
 individuosPorGeneracion = 15

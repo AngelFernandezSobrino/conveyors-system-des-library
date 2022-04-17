@@ -1,7 +1,6 @@
-import Sim
+from legacy import Sim, Utilities as Ut
 import copy
 import RedNeuronal
-import Utilities as Ut
 
 # Modelo01_02 control de producto a fabricar - Genetico Colas
 individuosPorEpoca = 10

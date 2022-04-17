@@ -1,6 +1,5 @@
-import Sim
+from legacy import Sim, Utilities as Ut
 import RedNeuronal
-import Utilities as Ut
 
 # Modelo01_03 control de producto a fabricar - Genetico Backprop
 individuosPorEpoca = 10
