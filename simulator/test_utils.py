@@ -1,4 +1,4 @@
-from simulator.stopper import StopperInfo
+from stopper import StopperInfo
 
 system_description_example: dict[str, StopperInfo] = {
     '0': {
@@ -23,7 +23,7 @@ system_description_example: dict[str, StopperInfo] = {
         'default_locked': False
     },
     '3': {
-        'destiny': ['4'],
+        'destiny': ['0'],
         'steps': [8],
         'move_behaviour': ['fast'],
         'rest_steps': [1],

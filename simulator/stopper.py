@@ -1,6 +1,8 @@
-from timed_events_manager import TimedEventsManager
-from tray import Tray
 from typing import TypedDict, Dict
+
+from .controller import ControllerBase
+from .timed_events_manager import TimedEventsManager
+from .tray import Tray
 
 
 class StopperInfo(TypedDict):
@@ -17,8 +19,12 @@ SystemDescription = Dict[str, StopperInfo]
 class Stopper:
 
     def __init__(self, external_stopper_id: str, simulation_description: SystemDescription,
-                 simulation: dict, events_register: TimedEventsManager, debug):
+                 simulation: dict, events_register: TimedEventsManager, controller, debug):
         self.debug = debug
+
+        self.request_time = 0
+
+        self.controller = controller
 
         self.stopper_id = external_stopper_id
         self.simulation = simulation
@@ -58,18 +64,20 @@ class Stopper:
                 self.input_ids += [external_stopper_id]
 
     def check_request(self):
+        self.controller.check_request(self.stopper_id, self.simulation)
         if not self.request:
             return
         for destiny in self.output_ids:
-            if self.simulation[destiny].check_availability(
-            ) and not self.move[destiny] and not self.stop[destiny]:
+            if self.simulation[destiny].check_availability() and not self.move[destiny] and not self.stop[destiny]:
                 self.start_move(destiny)
                 return
+        self.events_register.push(self.check_request, {}, 1)
 
     def input(self, tray: Tray):
         self.input_tray = tray
         self.rest = False
         self.request = True
+        self.request_time = self.events_register.step
         self.check_request()
 
     def start_move(self, destiny):
@@ -81,8 +89,7 @@ class Stopper:
         if self.default_locked:
             self.lock(destiny)
         if self.move_behaviour == 'fast':
-            self.events_register.push(self.return_rest, {},
-                                      self.rest_steps[destiny])
+            self.events_register.push(self.return_rest, {}, self.rest_steps[destiny])
 
     def return_rest(self):
         self.rest = True
@@ -125,11 +132,12 @@ if __name__ == '__main__':
 
     simulation_data_example = {}
 
+    controller = ControllerBase()
+
     from test_utils import system_description_example
 
     for stopper_id, stopper_description in system_description_example.items():
-        simulation_data_example[stopper_id] = Stopper(stopper_id, system_description_example, simulation_data_example,
-                                                      events_manager, False)
+        simulation_data_example[stopper_id] = Stopper(stopper_id, system_description_example, simulation_data_example, events_manager, controller, False)
         print(stopper_id)
         print(simulation_data_example[stopper_id])
 

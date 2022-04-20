@@ -1,95 +1,82 @@
-from multiprocessing import Process, Pipe
-from threading import Thread
+from threading import Thread, Event
 from typing import TypedDict
-
 import time
 
-from timed_events_manager import TimedEventsManager
+from .timed_events_manager import TimedEventsManager
+from .stopper import Stopper, SystemDescription
 
-from stopper import Stopper, SystemDescription
 
-
-class RealTimeConfig(TypedDict):
+class SimulationConfig(TypedDict):
     real_time_mode: bool
     real_time_step: float
-
-
-def sim_thead_real_time(simulator, pipe: Pipe):
-    start_time = time.time()
-    while not simulator.stop_flag and (simulator.steps == 0 or simulator.events_manager.step < simulator.steps):
-        print('Time step: ' + str(simulator.events_manager.step))
-        simulator.events_manager.run()
-        time.sleep(simulator.real_time['real_time_step'] - ((time.time() - start_time) % simulator.real_time['real_time_step']))
-    pipe.send(simulator.simulation_data)
-
-
-def sim_thread(simulator, pipe: Pipe):
-    while not simulator.stop_flag and (simulator.steps == 0 or simulator.events_manager.step < simulator.steps):
-        print('Step: ' + str(simulator.events_manager.step))
-        simulator.events_manager.run()
-    pipe.send(simulator.simulation_data)
+    steps: int
 
 
 class Core:
 
-    def __init__(self, system_description: SystemDescription) -> None:
+    def __init__(self, system_description: SystemDescription, controller) -> None:
 
-        self.real_time = {'real_time_mode': False, 'real_time_step': 0}
+        self.simulation_config = {'real_time_mode': False, 'real_time_step': 0, 'steps': 0}
 
         self.system_description = system_description
+        self.run_flag = False
 
-        self.steps = 0
-        self.stop_flag = False
+        self.end_callback = None
 
         self.simulation_data = {}
         self.events_manager = TimedEventsManager()
 
+        self.thread = Thread(target=self.run_thread)
+
         for stopper_id, stopper_description in system_description.items():
             self.simulation_data[stopper_id] = Stopper(stopper_id, system_description, self.simulation_data,
-                                                       self.events_manager, False)
+                                                       self.events_manager, controller, False)
 
-    def set_real_time_config(self, real_time_config: RealTimeConfig) -> None:
-        self.real_time = real_time_config
+    def set_end_callback(self, callback: callable) -> None:
+        self.end_callback = callback
 
-    def start(self) -> None:
-        self.stop_flag = False
+    def set_config(self, simulation_config: SimulationConfig) -> None:
+        self.simulation_config = simulation_config
 
     def stop(self) -> None:
-        self.stop_flag = True
+        self.run_flag = False
 
-    def run_for_steps(self, steps: int) -> Thread:
-        self.start()
-        self.steps = steps
-        return self.run_thread()
+    def start(self) -> None:
+        if not self.thread.is_alive():
+            self.run_flag = True
+            self.thread.start()
 
-    def run_until_stopped(self) -> Thread:
-        self.start()
-        self.steps = 0
-        return self.run_thread()
-
-    def run_thread(self) -> Thread:
-        th = Thread(target=self.run_process)
-        th.start()
-        return th
-
-    def run_process(self) -> None:
-        master_p, child_p = Pipe()
-        if self.real_time['real_time_mode']:
-            wk = Process(target=sim_thead_real_time, args=(self, child_p))
-            wk.start()
         else:
-            wk = Process(target=sim_thread, args=(self, child_p))
-            wk.start()
-        wk.join()
-        self.update_from_process(master_p)
+            raise Exception('Thread is already running')
 
-    def update_from_process(self, master_p) -> None:
-        self.simulation_data = master_p.recv()
+    def run_thread(self) -> None:
+        if self.simulation_config['real_time_mode']:
+            self.sim_thead_real_time()
+        else:
+            self.sim_thread()
+
+    def sim_thead_real_time(self):
+        start_time = time.time()
+        while self.run_flag and (self.simulation_config['steps'] == 0 or self.events_manager.step < self.simulation_config['steps']):
+            self.events_manager.run()
+            print(self.events_manager.step)
+            time.sleep(self.simulation_config['real_time_step'] - ((time.time() - start_time) % self.simulation_config['real_time_step']))
+
+        self.end_callback()
+
+    def sim_thread(self):
+        while self.run_flag and self.events_manager.step < self.simulation_config['steps']:
+            self.events_manager.run()
+            print(self.events_manager.step)
+
+        self.end_callback()
 
 
 if __name__ == '__main__':
     from test_utils import system_description_example
 
     core = Core(system_description_example)
-
-    core.run_for_steps(200)
+    core.set_config({'real_time_mode': False, 'real_time_step': 0, 'steps': 10})
+    core.start()
+    time.sleep(1)
+    core.stop()
