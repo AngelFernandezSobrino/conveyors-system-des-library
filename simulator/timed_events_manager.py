@@ -11,6 +11,12 @@ class TimedEventsManager:
         else:
             self.events_queue[step] = [[event, args]]
 
+    def add(self, event, args, step):
+        if step in self.events_queue:
+            self.events_queue[step] += [[event, args]]
+        else:
+            self.events_queue[step] = [[event, args]]
+
     def run(self):
         self.step += 1
         if self.step not in self.events_queue:

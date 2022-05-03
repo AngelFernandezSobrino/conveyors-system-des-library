@@ -2,6 +2,7 @@ import threading as th
 import multiprocessing as mp
 import time
 
+from .results_controller import ResultsController
 from .core import Core
 from .stopper import SystemDescription
 
@@ -11,6 +12,8 @@ class Api:
     def __init__(self, system_description: SystemDescription, controller):
         self.system_description = system_description
         self.controller = controller
+        self.results_controller = ResultsController(self.system_description)
+
         self.core = None
         self.thread1 = None
         self.thread2 = None
@@ -57,7 +60,7 @@ class Api:
             self.thread2 = None
 
     def config_core(self):
-        self.core = Core(self.system_description, self.controller)
+        self.core = Core(self.system_description, self.controller, self.results_controller)
         self.core.set_end_callback(self.sim_end)
         self.thread1 = th.Thread(target=self.manager)
         self.thread2 = th.Thread(target=self.daemon)

@@ -1,6 +1,7 @@
 from typing import TypedDict, Dict
 
-from .controller import ControllerBase
+
+from .behaviour_controller import ControllerBase
 from .timed_events_manager import TimedEventsManager
 from .tray import Tray
 
@@ -18,14 +19,13 @@ SystemDescription = Dict[str, StopperInfo]
 
 class Stopper:
 
-    def __init__(self, external_stopper_id: str, simulation_description: SystemDescription,
-                 simulation: dict, events_register: TimedEventsManager, controller, debug):
+    def __init__(self, external_stopper_id: str, simulation_description: SystemDescription, simulation: dict, events_register: TimedEventsManager, behaviour_controller, results_controller, debug):
         self.debug = debug
 
         self.request_time = 0
 
-        self.controller = controller
-
+        self.behaviour_controller = behaviour_controller
+        self.results_controller = results_controller
         self.stopper_id = external_stopper_id
         self.simulation = simulation
         self.description = simulation_description[external_stopper_id]
@@ -64,7 +64,7 @@ class Stopper:
                 self.input_ids += [external_stopper_id]
 
     def check_request(self):
-        self.controller.check_request(self.stopper_id, self.simulation)
+        self.behaviour_controller.check_request(self.stopper_id, self.simulation)
         if not self.request:
             return
         for destiny in self.output_ids:
@@ -78,6 +78,7 @@ class Stopper:
         self.rest = False
         self.request = True
         self.request_time = self.events_register.step
+        self.results_controller.update_times(self, self.events_register.step)
         self.check_request()
 
     def start_move(self, destiny):
@@ -85,6 +86,7 @@ class Stopper:
         self.move[destiny] = True
         self.output_trays[destiny] = self.input_tray
         self.input_tray = False
+        self.results_controller.update_times(self, self.events_register.step)
         self.events_register.push(self.end_move, {'destiny': destiny}, self.steps[destiny])
         if self.default_locked:
             self.lock(destiny)
@@ -93,6 +95,7 @@ class Stopper:
 
     def return_rest(self):
         self.rest = True
+        self.results_controller.update_times(self, self.events_register.step)
         self.propagate_backwards()
 
     def propagate_backwards(self):
@@ -116,6 +119,7 @@ class Stopper:
         self.output_trays[args['destiny']] = False
         if self.move_behaviour != 'fast':
             self.return_rest()
+        self.results_controller.update_times(self, self.events_register.step)
 
     def lock(self, output_id):
         self.stop[output_id] = True

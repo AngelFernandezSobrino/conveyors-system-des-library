@@ -14,7 +14,7 @@ class SimulationConfig(TypedDict):
 
 class Core:
 
-    def __init__(self, system_description: SystemDescription, controller) -> None:
+    def __init__(self, system_description: SystemDescription, behaviour_controller, results_controller) -> None:
 
         self.simulation_config = {'real_time_mode': False, 'real_time_step': 0, 'steps': 0}
 
@@ -25,12 +25,16 @@ class Core:
 
         self.simulation_data = {}
         self.events_manager = TimedEventsManager()
+        self.results_controller = results_controller
 
         self.thread = Thread(target=self.run_thread)
 
         for stopper_id, stopper_description in system_description.items():
             self.simulation_data[stopper_id] = Stopper(stopper_id, system_description, self.simulation_data,
-                                                       self.events_manager, controller, False)
+                                                       self.events_manager, behaviour_controller, results_controller, False)
+
+        for step, external_function in behaviour_controller.external_functions.items():
+            self.events_manager.add(external_function, {'simulation_data': self.simulation_data}, step)
 
     def set_end_callback(self, callback: callable) -> None:
         self.end_callback = callback
@@ -59,7 +63,6 @@ class Core:
         start_time = time.time()
         while self.run_flag and (self.simulation_config['steps'] == 0 or self.events_manager.step < self.simulation_config['steps']):
             self.events_manager.run()
-            print(self.events_manager.step)
             time.sleep(self.simulation_config['real_time_step'] - ((time.time() - start_time) % self.simulation_config['real_time_step']))
 
         self.end_callback()
@@ -67,7 +70,6 @@ class Core:
     def sim_thread(self):
         while self.run_flag and self.events_manager.step < self.simulation_config['steps']:
             self.events_manager.run()
-            print(self.events_manager.step)
 
         self.end_callback()
 
