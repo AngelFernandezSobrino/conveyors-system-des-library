@@ -1,9 +1,9 @@
-import simulator
-from simulator.objects.stopper import Stopper
-from simulator.objects.tray import Tray
+
+from simulator import ControllerBase
+from simulator.objects import Stopper, Tray
 
 
-class ControllerExample(simulator.ControllerBase):
+class ControllerExample(ControllerBase):
     def __init__(self, system_description: dict):
         super().__init__(system_description)
 
@@ -32,5 +32,4 @@ def check_request_stopper_2(simulation_data: dict[str, Stopper]):
 
 
 def external_0(args):
-    print('hola')
     args['simulation_data']['0'].input(Tray(23, 2))

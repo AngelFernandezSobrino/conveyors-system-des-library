@@ -1,9 +1,14 @@
-from typing import TypedDict, Dict
+from __future__ import annotations
+
+from typing import TypedDict, TYPE_CHECKING
 
 
-from simulator.behaviour_controller import ControllerBase
 from simulator.helpers.timed_events_manager import TimedEventsManager
 from .tray import Tray
+
+if TYPE_CHECKING:
+    from simulator.behaviour_controller import ControllerBase
+    import simulator.objects.system
 
 
 class StopperInfo(TypedDict):
@@ -14,12 +19,9 @@ class StopperInfo(TypedDict):
     default_locked: bool
 
 
-SystemDescription = Dict[str, StopperInfo]
-
-
 class Stopper:
 
-    def __init__(self, external_stopper_id: str, simulation_description: SystemDescription, simulation: dict, events_register: TimedEventsManager, behaviour_controller, results_controller, debug):
+    def __init__(self, external_stopper_id: str, simulation_description: simulator.objects.system.SystemDescription, simulation: dict, events_register: TimedEventsManager, behaviour_controller, results_controller, debug):
         self.debug = debug
 
         self.request_time = 0
@@ -138,7 +140,7 @@ if __name__ == '__main__':
 
     controller = ControllerBase()
 
-    from test_utils import system_description_example
+    from src.simulator.helpers.test_utils import system_description_example
 
     for stopper_id, stopper_description in system_description_example.items():
         simulation_data_example[stopper_id] = Stopper(stopper_id, system_description_example, simulation_data_example, events_manager, controller, False)

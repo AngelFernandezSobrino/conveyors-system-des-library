@@ -1,11 +1,16 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from copy import deepcopy
 
-from simulator.objects.product import Product
-from simulator.objects.stopper import Stopper, SystemDescription
+from simulator.objects import Product, Stopper
+
+if TYPE_CHECKING:
+    pass
 
 
 class ResultsController:
-    def __init__(self, system_description: SystemDescription):
+    def __init__(self, system_description: src.simulator.objects.system.SystemDescription):
         self.production = {}
         self.times = {}
         self.previous_stoppers = {}
@@ -28,25 +33,25 @@ class ResultsController:
 
     def update_times(self, stopper: Stopper, actual_time: int):
         print('Stopper Id: ', stopper.stopper_id, ' Actual Time: ', actual_time)
-        if self.previous_stoppers[stopper.stopper_id]['rest'] and not stopper.rest:
+        if self.previous_stoppers[stopper.stopper_id]['state']['rest'] and not stopper.rest:
             self.times[stopper.stopper_id]['rest'] += actual_time - self.previous_stoppers[stopper.stopper_id]['time'][
                 'rest']
         if stopper.rest:
             self.previous_stoppers[stopper.stopper_id]['time']['rest'] = actual_time
 
-        if self.previous_stoppers[stopper.stopper_id]['request'] and not stopper.rest:
+        if self.previous_stoppers[stopper.stopper_id]['state']['request'] and not stopper.rest:
             self.times[stopper.stopper_id]['request'] += actual_time - \
                                                          self.previous_stoppers[stopper.stopper_id]['time']['request']
         if stopper.request:
             self.previous_stoppers[stopper.stopper_id]['time']['request'] = actual_time
 
         for destiny in stopper.output_ids:
-            if self.previous_stoppers[stopper.stopper_id]['move'][destiny] and not stopper.move[destiny]:
+            if self.previous_stoppers[stopper.stopper_id]['state']['move'][destiny] and not stopper.move[destiny]:
                 self.times[stopper.stopper_id]['move'][destiny] += \
                     actual_time - self.previous_stoppers[stopper.stopper_id]['time']['move'][destiny]
             if stopper.move[destiny]:
                 self.previous_stoppers[stopper.stopper_id]['time']['move'][destiny] = actual_time
 
-        self.previous_stoppers[stopper.stopper_id]['rest'] = deepcopy(stopper.rest)
-        self.previous_stoppers[stopper.stopper_id]['request'] = deepcopy(stopper.request)
-        self.previous_stoppers[stopper.stopper_id]['move'] = deepcopy(stopper.move)
+        self.previous_stoppers[stopper.stopper_id]['state']['rest'] = deepcopy(stopper.rest)
+        self.previous_stoppers[stopper.stopper_id]['state']['request'] = deepcopy(stopper.request)
+        self.previous_stoppers[stopper.stopper_id]['state']['move'] = deepcopy(stopper.move)

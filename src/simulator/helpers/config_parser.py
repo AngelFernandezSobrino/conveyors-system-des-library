@@ -20,28 +20,39 @@ class ConfigParser:
 
         column_names = [str(column_name.value) for column_name in headers]
 
+        conversions = next(ws.rows)
+
+        conversion_types = [str(column_name.value) for column_name in conversions]
+
         out_dict = {}
         for row in ws.rows:
+            if row[0].row < 3:
+                continue
             for i, cell in enumerate(row):
                 if cell.value is None:
                     continue
                 if str(row[0].value) not in out_dict:
                     out_dict[str(row[0].value)] = {}
 
+                value = cell.value
+
+                if conversion_types[i] == 'str':
+                    value = str(value)
+
                 if (i > 0 and column_names[i - 1] == column_names[i]) or (i < len(row) - 1 and column_names[i + 1] == column_names[i]):
                     if column_names[i] not in out_dict[str(row[0].value)]:
-                        out_dict[str(row[0].value)][column_names[i]] = [cell.value]
+                        out_dict[str(row[0].value)][column_names[i]] = [value]
                     else:
-                        out_dict[str(row[0].value)][column_names[i]] += [cell.value]
+                        out_dict[str(row[0].value)][column_names[i]] += [value]
                 else:
-                    out_dict[str(row[0].value)][column_names[i]] = cell.value
+                    out_dict[str(row[0].value)][column_names[i]] = value
 
         self.config = out_dict
         self.config_available = True
 
 
 if __name__ == '__main__':
-    config = ConfigParser('../../data/simulator_config.xlsx')
+    config = ConfigParser('../../../data/simulator_config.xlsx')
 
     config.parse('config_parser')
 

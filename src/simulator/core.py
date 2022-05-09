@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 from threading import Thread
-from typing import TypedDict
+from typing import TypedDict, TYPE_CHECKING
 import time
 
 from simulator.helpers.timed_events_manager import TimedEventsManager
-from simulator.objects.stopper import Stopper, SystemDescription
+from simulator.objects.stopper import Stopper
+
+if TYPE_CHECKING:
+    import simulator.objects.system
 
 
 class SimulationConfig(TypedDict):
@@ -14,7 +19,7 @@ class SimulationConfig(TypedDict):
 
 class Core:
 
-    def __init__(self, system_description: SystemDescription, behaviour_controller, results_controller) -> None:
+    def __init__(self, system_description: simulator.objects.system.SystemDescription, behaviour_controller, results_controller) -> None:
 
         self.simulation_config = {'real_time_mode': False, 'real_time_step': 0, 'steps': 0}
 
@@ -32,9 +37,8 @@ class Core:
         for stopper_id, stopper_description in system_description.items():
             self.simulation_data[stopper_id] = Stopper(stopper_id, system_description, self.simulation_data,
                                                        self.events_manager, behaviour_controller, results_controller, False)
-        print(behaviour_controller.external_functions)
-        for step, external_function in behaviour_controller.external_functions.items():
-
+        print(behaviour_controller.external)
+        for step, external_function in behaviour_controller.external.items():
             self.events_manager.add(external_function, {'simulation_data': self.simulation_data}, step)
 
     def sync_status(self, status):
@@ -77,11 +81,12 @@ class Core:
 
     def sim_thread(self):
         while self.run_flag and self.events_manager.step < self.simulation_config['steps']:
+            print(self.events_manager.step)
             self.events_manager.run()
 
 
 if __name__ == '__main__':
-    from simulator.helpers.test_utils import system_description_example
+    from src.simulator.helpers.test_utils import system_description_example
 
     core = Core(system_description_example)
     core.set_config({'real_time_mode': False, 'real_time_step': 0, 'steps': 10})
