@@ -29,7 +29,11 @@ if __name__ == '__main__':
         simulation_api.run_steps(200)
         simulation_api.wait()
         sleep(1)
-        print(simulation_api.results_controller.times)
+        print(simulation_api.results_controller.times['0'])
+        print(simulation_api.results_controller.times['1'])
+        print(simulation_api.results_controller.times['2'])
+        print(simulation_api.results_controller.times['3'])
+        print(simulation_api.results_controller.times['4'])
 
     except KeyboardInterrupt:
         pass

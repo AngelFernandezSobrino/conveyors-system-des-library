@@ -32,8 +32,9 @@ class Core:
         for stopper_id, stopper_description in system_description.items():
             self.simulation_data[stopper_id] = Stopper(stopper_id, system_description, self.simulation_data,
                                                        self.events_manager, behaviour_controller, results_controller, False)
-
+        print(behaviour_controller.external_functions)
         for step, external_function in behaviour_controller.external_functions.items():
+
             self.events_manager.add(external_function, {'simulation_data': self.simulation_data}, step)
 
     def set_end_callback(self, callback: callable) -> None:
