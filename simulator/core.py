@@ -1,4 +1,4 @@
-from threading import Thread, Event
+from threading import Thread
 from typing import TypedDict
 import time
 
@@ -27,7 +27,7 @@ class Core:
         self.events_manager = TimedEventsManager()
         self.results_controller = results_controller
 
-        self.thread = Thread(target=self.run_thread)
+        self.thread = Thread(target=self.thread_function)
 
         for stopper_id, stopper_description in system_description.items():
             self.simulation_data[stopper_id] = Stopper(stopper_id, system_description, self.simulation_data,
@@ -37,8 +37,17 @@ class Core:
 
             self.events_manager.add(external_function, {'simulation_data': self.simulation_data}, step)
 
-    def set_end_callback(self, callback: callable) -> None:
-        self.end_callback = callback
+    def sync_status(self, status):
+        raise Exception('Method not implemented')
+
+    def run_steps(self, steps: int):
+        self.set_config({'real_time_mode': False, 'real_time_step': 0, 'steps': steps})
+
+    def run_real_time_steps(self, steps: int, real_time_step: float):
+        self.set_config({'real_time_mode': True, 'real_time_step': real_time_step, 'steps': steps})
+
+    def run_real_time(self, real_time_step: float):
+        self.set_config({'real_time_mode': True, 'real_time_step': real_time_step, 'steps': 0})
 
     def set_config(self, simulation_config: SimulationConfig) -> None:
         self.simulation_config = simulation_config
@@ -54,7 +63,7 @@ class Core:
         else:
             raise Exception('Thread is already running')
 
-    def run_thread(self) -> None:
+    def thread_function(self) -> None:
         if self.simulation_config['real_time_mode']:
             self.sim_thead_real_time()
         else:
@@ -66,13 +75,9 @@ class Core:
             self.events_manager.run()
             time.sleep(self.simulation_config['real_time_step'] - ((time.time() - start_time) % self.simulation_config['real_time_step']))
 
-        self.end_callback()
-
     def sim_thread(self):
         while self.run_flag and self.events_manager.step < self.simulation_config['steps']:
             self.events_manager.run()
-
-        self.end_callback()
 
 
 if __name__ == '__main__':
