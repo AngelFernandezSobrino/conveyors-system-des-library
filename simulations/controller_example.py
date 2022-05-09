@@ -1,6 +1,6 @@
 import simulator
-from simulator.stopper import Stopper
-from simulator.tray import Tray
+from simulator.objects.stopper import Stopper
+from simulator.objects.tray import Tray
 
 
 class ControllerExample(simulator.ControllerBase):

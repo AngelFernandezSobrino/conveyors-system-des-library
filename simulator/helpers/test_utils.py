@@ -1,4 +1,4 @@
-from stopper import StopperInfo
+from simulator.objects.stopper import StopperInfo
 
 system_description_example: dict[str, StopperInfo] = {
     '0': {

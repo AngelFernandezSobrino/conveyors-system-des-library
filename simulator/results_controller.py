@@ -1,7 +1,7 @@
 from copy import deepcopy
 
-from .product import Product
-from .stopper import Stopper, SystemDescription
+from simulator.objects.product import Product
+from simulator.objects.stopper import Stopper, SystemDescription
 
 
 class ResultsController:

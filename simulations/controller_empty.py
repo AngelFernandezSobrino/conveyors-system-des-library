@@ -1,5 +1,4 @@
 import simulator
-from simulator.stopper import Stopper
 
 
 class ControllerExample(simulator.ControllerBase):

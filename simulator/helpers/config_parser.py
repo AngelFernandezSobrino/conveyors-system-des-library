@@ -41,7 +41,7 @@ class ConfigParser:
 
 
 if __name__ == '__main__':
-    config = ConfigParser('../data/simulator_config.xlsx')
+    config = ConfigParser('../../data/simulator_config.xlsx')
 
     config.parse('config_parser')
 

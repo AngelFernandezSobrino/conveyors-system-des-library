@@ -1,8 +1,8 @@
 from typing import TypedDict, Dict
 
 
-from .behaviour_controller import ControllerBase
-from .timed_events_manager import TimedEventsManager
+from simulator.behaviour_controller import ControllerBase
+from simulator.helpers.timed_events_manager import TimedEventsManager
 from .tray import Tray
 
 

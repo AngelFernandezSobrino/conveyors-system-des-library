@@ -2,8 +2,8 @@ from threading import Thread, Event
 from typing import TypedDict
 import time
 
-from .timed_events_manager import TimedEventsManager
-from .stopper import Stopper, SystemDescription
+from simulator.helpers.timed_events_manager import TimedEventsManager
+from simulator.objects.stopper import Stopper, SystemDescription
 
 
 class SimulationConfig(TypedDict):
@@ -76,7 +76,7 @@ class Core:
 
 
 if __name__ == '__main__':
-    from test_utils import system_description_example
+    from simulator.helpers.test_utils import system_description_example
 
     core = Core(system_description_example)
     core.set_config({'real_time_mode': False, 'real_time_step': 0, 'steps': 10})
