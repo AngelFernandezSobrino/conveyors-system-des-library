@@ -1,4 +1,5 @@
 import openpyxl as xl
+import itertools
 import pprint
 
 pp = pprint.PrettyPrinter(depth=4)
@@ -12,7 +13,7 @@ class ConfigParser:
         self.config_available = False
 
     def parse(self, sheet_name):
-        wb = xl.load_workbook(self.file_directory, read_only=True)
+        wb = xl.load_workbook(self.file_directory, read_only=True, data_only=True)
         ws = wb[sheet_name]
         headers = next(ws.rows)
         if headers[0].value != 'stopper_id':
@@ -20,7 +21,7 @@ class ConfigParser:
 
         column_names = [str(column_name.value) for column_name in headers]
 
-        conversions = next(ws.rows)
+        conversions = next(itertools.islice(ws.rows, 1, None))
 
         conversion_types = [str(column_name.value) for column_name in conversions]
 
@@ -31,13 +32,14 @@ class ConfigParser:
             for i, cell in enumerate(row):
                 if cell.value is None:
                     continue
-                if str(row[0].value) not in out_dict:
-                    out_dict[str(row[0].value)] = {}
 
                 value = cell.value
 
                 if conversion_types[i] == 'str':
                     value = str(value)
+
+                if str(row[0].value) not in out_dict:
+                    out_dict[str(row[0].value)] = {}
 
                 if (i > 0 and column_names[i - 1] == column_names[i]) or (i < len(row) - 1 and column_names[i + 1] == column_names[i]):
                     if column_names[i] not in out_dict[str(row[0].value)]:
