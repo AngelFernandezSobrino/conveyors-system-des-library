@@ -54,7 +54,7 @@ class Stopper:
         self.rest = True
         self.request = False
         self.move = {v: False for v in self.description['destiny']}
-        self.stop = {v: True if self.description['default_locked'] else False for v in self.description['destiny']}
+        self.stop = {v: True if self.description['default_locked'] == 'True' else False for v in self.description['destiny']}
 
         self.output_trays = {v: False for v in self.description['destiny']}
 
@@ -65,7 +65,7 @@ class Stopper:
             if self.stopper_id in stopper_info['destiny']:
                 self.input_ids += [external_stopper_id]
 
-    def check_request(self):
+    def check_request(self, *args):
         self.behaviour_controller.check_request(self.stopper_id, self.simulation)
         if not self.request:
             return
@@ -90,7 +90,7 @@ class Stopper:
         self.input_tray = False
         self.results_controller.update_times(self, self.events_register.step)
         self.events_register.push(self.end_move, {'destiny': destiny}, self.steps[destiny])
-        if self.default_locked:
+        if self.default_locked == 'True':
             self.lock(destiny)
         if self.move_behaviour == 'fast':
             self.events_register.push(self.return_rest, {}, self.rest_steps[destiny])
