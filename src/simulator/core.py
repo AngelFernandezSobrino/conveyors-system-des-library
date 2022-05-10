@@ -10,6 +10,7 @@ from simulator.objects.stopper import Stopper
 if TYPE_CHECKING:
     import simulator.objects.system
     import simulator.results_controller.ResultsController
+    import simulator.behaviour_controller.BehaviourController
 
 
 class SimulationConfig(TypedDict):
@@ -20,7 +21,7 @@ class SimulationConfig(TypedDict):
 
 class Core:
 
-    def __init__(self, system_description: simulator.objects.system.SystemDescription, behaviour_controller, results_controller: simulator.results_controller.ResultsController) -> None:
+    def __init__(self, system_description: simulator.objects.system.SystemDescription, behaviour_controller: simulator.behaviour_controller.BehaviourController, results_controller: simulator.results_controller.ResultsController) -> None:
 
         self.simulation_config = {'real_time_mode': False, 'real_time_step': 0, 'steps': 0}
 
@@ -39,7 +40,7 @@ class Core:
             self.simulation_data[stopper_id] = Stopper(stopper_id, system_description, self.simulation_data,
                                                        self.events_manager, behaviour_controller, results_controller, False)
 
-        for step, external_function in behaviour_controller.external.items():
+        for step, external_function in behaviour_controller.external_functions.items():
             self.events_manager.add(external_function, {'simulation_data': self.simulation_data}, step)
 
     def sync_status(self, status):
