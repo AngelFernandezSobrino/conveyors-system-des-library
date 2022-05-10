@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TypedDict, TYPE_CHECKING
 
-
 from simulator.helpers.timed_events_manager import TimedEventsManager
 from .tray import Tray
 
 if TYPE_CHECKING:
-    from simulator.behaviour_controller import ControllerBase
     import simulator.objects.system
+    import simulator.results_controller
+    import simulator.behaviour_controller
 
 
 class StopperInfo(TypedDict):
@@ -21,7 +21,8 @@ class StopperInfo(TypedDict):
 
 class Stopper:
 
-    def __init__(self, external_stopper_id: str, simulation_description: simulator.objects.system.SystemDescription, simulation: dict, events_register: TimedEventsManager, behaviour_controller, results_controller, debug):
+    def __init__(self, external_stopper_id: str, simulation_description: simulator.objects.system.SystemDescription, simulation: dict, events_register: TimedEventsManager,
+                 behaviour_controller: simulator.behaviour_controller.BehaviourController, results_controller: simulator.results_controller.ResultsController, debug):
         self.debug = debug
 
         self.request_time = 0
@@ -66,7 +67,7 @@ class Stopper:
                 self.input_ids += [external_stopper_id]
 
     def check_request(self, *args):
-        self.behaviour_controller.check_request(self.stopper_id, self.simulation)
+        self.behaviour_controller.check_request(self.stopper_id, {'simulation': self.simulation, 'events_register': self.events_register})
         if not self.request:
             return
         for destiny in self.output_ids:
@@ -94,6 +95,7 @@ class Stopper:
             self.lock(destiny)
         if self.move_behaviour == 'fast':
             self.events_register.push(self.return_rest, {}, self.rest_steps[destiny])
+        self.check_request()
 
     def return_rest(self):
         self.rest = True
@@ -125,11 +127,9 @@ class Stopper:
 
     def lock(self, output_id):
         self.stop[output_id] = True
-        self.check_request()
 
     def unlock(self, output_id):
         self.stop[output_id] = False
-        self.check_request()
 
 
 if __name__ == '__main__':
@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
     simulation_data_example = {}
 
-    controller = ControllerBase()
+    controller = simulator.behaviour_controller.BehaviourController()
 
     from src.simulator.helpers.test_utils import system_description_example
 
