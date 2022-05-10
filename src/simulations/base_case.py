@@ -1,10 +1,11 @@
-from src import simulator
+import simulator
+import time
 import controller_example
 import controller_empty
 
 if __name__ == '__main__':
 
-    config_path = '../../data/simulator_config.xlsx'
+    config_path = '../../data/simulator_config_v3.xlsx'
     config_parser = simulator.ConfigParser(config_path)
     config_parser.parse('config_parser')
 
@@ -21,11 +22,10 @@ if __name__ == '__main__':
 
     print('Running simulation...')
     print('Run steps')
-    sim_core.run_steps(100)
+    sim_core.run_steps(200000)
+    start = time.time()
     sim_core.start()
     sim_core.thread.join()
-    print(sim_core.results_controller.times['0'])
-    print(sim_core.results_controller.times['1'])
-    print(sim_core.results_controller.times['2'])
-    print(sim_core.results_controller.times['3'])
-    print(sim_core.results_controller.times['4'])
+    print(time.time() - start)
+    # for i in config_parser.config.keys():
+    #     print(sim_core.results_controller.times[i])
