@@ -12,13 +12,13 @@ if __name__ == '__main__':
     if not config_parser.config_available:
         raise Exception('Config not available')
 
-    behaviour_controller = controller_example.ControllerExample(config_parser.config)
+    behaviour_controller = controller_example.BehaviourControllerExample(config_parser.config)
 
-    behaviour_controller2 = controller_empty.ControllerExample(config_parser.config)
+    behaviour_controller2 = controller_empty.BehaviourControllerEmpty(config_parser.config)
 
     results_controller = simulator.ResultsController(config_parser.config)
 
-    sim_core = simulator.Core(config_parser.config, behaviour_controller2, results_controller)
+    sim_core = simulator.Core(config_parser.config, behaviour_controller, results_controller)
 
     print('Running simulation...')
     print('Run steps')
@@ -27,5 +27,5 @@ if __name__ == '__main__':
     sim_core.start()
     sim_core.thread.join()
     print(time.time() - start)
-    # for i in config_parser.config.keys():
-    #     print(sim_core.results_controller.times[i])
+    for i in config_parser.config.keys():
+        print(sim_core.results_controller.times[i])
