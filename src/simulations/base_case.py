@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     print('Running simulation...')
     print('Run steps')
-    sim_core.run_steps(200000)
+    sim_core.run_steps(50000)
     start = time.time()
     sim_core.start()
     sim_core.thread.join()

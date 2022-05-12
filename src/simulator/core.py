@@ -41,7 +41,7 @@ class Core:
                                                        self.events_manager, behaviour_controller, results_controller, False)
 
         for step, external_function in behaviour_controller.external_functions.items():
-            self.events_manager.add(external_function, {'simulation_data': self.simulation_data}, step)
+            self.events_manager.add(external_function, {'simulation': self.simulation_data}, step)
 
     def sync_status(self, status):
         raise Exception('Method not implemented')

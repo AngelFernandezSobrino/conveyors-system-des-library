@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TypedDict, TYPE_CHECKING
+from typing import TypedDict, TYPE_CHECKING, Union
 
 from simulator.helpers.timed_events_manager import TimedEventsManager
 from .tray import Tray
@@ -17,6 +17,7 @@ class StopperInfo(TypedDict):
     move_behaviour: list[str]
     rest_steps: list[int]
     default_locked: bool
+    priority: int
 
 
 class Stopper:
@@ -59,22 +60,26 @@ class Stopper:
 
         self.output_trays = {v: False for v in self.description['destiny']}
 
-        self.input_tray = False
+        self.input_tray: Union[Tray, bool] = False
         self.input_ids = []
+
+        self.return_rest_function = False
+
+        if self.stopper_id in behaviour_controller.return_rest_functions:
+            self.return_rest_function = behaviour_controller.return_rest_functions[self.stopper_id]
 
         for external_stopper_id, stopper_info in simulation_description.items():
             if self.stopper_id in stopper_info['destiny']:
                 self.input_ids += [external_stopper_id]
 
     def check_request(self, *args):
-        self.behaviour_controller.check_request(self.stopper_id, {'simulation': self.simulation, 'events_register': self.events_register})
+        self.behaviour_controller.check_request(self.stopper_id, {'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
         if not self.request:
             return
         for destiny in self.output_ids:
-            if self.simulation[destiny].check_availability() and not self.move[destiny] and not self.stop[destiny]:
+            if self.simulation[destiny].check_availability(exclude_id=self.stopper_id) and not self.move[destiny] and not self.stop[destiny]:
                 self.start_move(destiny)
                 return
-        self.events_register.push(self.check_request, {}, 1)
 
     def input(self, tray: Tray):
         self.input_tray = tray
@@ -82,7 +87,6 @@ class Stopper:
         self.request = True
         self.request_time = self.events_register.step
         self.results_controller.update_times(self, self.events_register.step)
-        self.check_request()
 
     def start_move(self, destiny):
         self.request = False
@@ -91,28 +95,44 @@ class Stopper:
         self.input_tray = False
         self.results_controller.update_times(self, self.events_register.step)
         self.events_register.push(self.end_move, {'destiny': destiny}, self.steps[destiny])
-        if self.default_locked == 'True':
+        if self.default_locked == 1:
             self.lock(destiny)
-        if self.move_behaviour == 'fast':
-            self.events_register.push(self.return_rest, {}, self.rest_steps[destiny])
-        self.check_request()
+        if self.move_behaviour[destiny] == 1:
+            self.events_register.push(self.return_rest_and_propagate, {}, self.rest_steps[destiny])
+        if self.move_behaviour[destiny] == 0:
+            self.return_rest_and_propagate()
 
-    def return_rest(self):
+    def return_rest_and_propagate(self, *args):
         self.rest = True
         self.results_controller.update_times(self, self.events_register.step)
+        if self.return_rest_function:
+            self.return_rest_function({'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
         self.propagate_backwards()
 
-    def propagate_backwards(self):
-        for origin in self.input_ids:
-            self.simulation[origin].check_request()
+    def return_rest(self, *args):
+        self.rest = True
+        self.results_controller.update_times(self, self.events_register.step)
+        if self.return_rest_function:
+            self.return_rest_function({'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
 
-    def check_availability(self):
+    def propagate_backwards(self):
+        if self.description['priority'] == 0:
+            for origin in self.input_ids:
+                self.simulation[origin].check_request()
+        else:
+            for origin in reversed(self.input_ids):
+                self.simulation[origin].check_request()
+
+    def check_availability(self, exclude_id=None):
         for origin in self.input_ids:
-            if self.simulation[origin].get_move_to(self.stopper_id):
-                return False
-        if not self.rest:
-            return False
-        return True
+            if origin == exclude_id:
+                pass
+            else:
+                if self.simulation[origin].get_move_to(self.stopper_id):
+                    return False
+        if self.rest:
+            return True
+        return False
 
     def get_move_to(self, destiny):
         return self.move[destiny]
@@ -121,15 +141,21 @@ class Stopper:
         self.move[args['destiny']] = False
         self.simulation[args['destiny']].input(self.output_trays[args['destiny']])
         self.output_trays[args['destiny']] = False
-        if self.move_behaviour != 'fast':
+        if self.move_behaviour == 3:
             self.return_rest()
-        self.results_controller.update_times(self, self.events_register.step)
+            self.results_controller.update_times(self, self.events_register.step)
+            self.propagate_backwards()
+        else:
+            self.results_controller.update_times(self, self.events_register.step)
+            self.check_request()
+        self.simulation[args['destiny']].check_request()
 
     def lock(self, output_id):
         self.stop[output_id] = True
 
     def unlock(self, output_id):
         self.stop[output_id] = False
+        self.check_request()
 
 
 if __name__ == '__main__':
