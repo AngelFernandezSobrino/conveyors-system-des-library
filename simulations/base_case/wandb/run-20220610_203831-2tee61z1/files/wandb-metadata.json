@@ -1,0 +1,24 @@
+{
+    "os": "Windows-10-10.0.19043-SP0",
+    "python": "3.10.4",
+    "heartbeatAt": "2022-06-10T18:38:32.580571",
+    "startedAt": "2022-06-10T18:38:31.392571",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 2070 SUPER",
+    "gpu_count": 1,
+    "cpu_count": 16,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "C:/Users/Angel/git/conveyors-system-des-library/simulations/base_case/simulation.py",
+    "codePath": "simulations\\base_case\\simulation.py",
+    "git": {
+        "remote": "https://github.com/AngelFernandezSobrino/conveyors-system-des-library.git",
+        "commit": "9093a40733d14cbc79311348d41e523a68eff0eb"
+    },
+    "email": "fernandezsobrinoangel@gmail.com",
+    "root": "C:/Users/Angel/git/conveyors-system-des-library",
+    "host": "AngelWorkstation",
+    "username": "Angel",
+    "executable": "C:\\Users\\Angel\\git\\conveyors-system-des-library\\venv310\\Scripts\\python.exe"
+}
