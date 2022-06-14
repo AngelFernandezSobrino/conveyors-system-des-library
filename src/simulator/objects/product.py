@@ -4,7 +4,7 @@ class Product:
         self.product_id = product_id
         self.state = state
         self.model = model
-
+git
     def __str__(self):
         return "Product ID: {}, State: {}, Model: {}".format(self.product_id, self.state, self.model)
 

@@ -14,20 +14,13 @@ class BehaviourControllerExample(BehaviourController):
         }
 
         self.check_request_functions = {
-            '1': [delay, {'time': 10}],
-            '2': [delay, {'time': 5}]
+            '1': [simulator.behaviour_controller.delay, {'time': 10, 'output_index': 0}],
+            '2': [simulator.behaviour_controller.delay, {'time': 5, 'output_index': 0}]
         }
 
         self.return_rest_functions = {
             '0': external_input
         }
-
-
-def delay(params, data: simulator.behaviour_controller.CheckRequestData):
-    stopper = data['simulation'][data['stopper_id']]
-    stopper.lock(stopper.output_ids[0])
-    if stopper.request_time == params['time']:
-        data['events_register'].push(stopper.unlock, stopper.output_ids[0], params['time'])
 
 
 def load_product(params, data: simulator.behaviour_controller.CheckRequestData):

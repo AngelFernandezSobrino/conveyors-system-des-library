@@ -73,7 +73,7 @@ class Stopper:
                 self.input_ids += [external_stopper_id]
 
     def check_request(self, *args):
-        self.behaviour_controller.check_request(self.stopper_id, {'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
+        self.behaviour_controller.check_request(self.stopper_id, {'simulation': self.simulation, 'events_register': self.events_register, 'stopper': self})
         if not self.request:
             return
         for destiny in self.output_ids:

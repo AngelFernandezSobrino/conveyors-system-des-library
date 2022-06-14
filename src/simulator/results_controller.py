@@ -1,6 +1,5 @@
 from __future__ import annotations
-
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict, Dict
 from copy import deepcopy
 
 from simulator.objects import Product, Stopper
@@ -9,11 +8,28 @@ if TYPE_CHECKING:
     import simulator.objects.system
 
 
+class StopperTimeResults(TypedDict):
+    rest: int
+    request: int
+    move: Dict[str, int]
+
+
+class PreviousData(TypedDict):
+    state: PreviousState
+    time: int
+
+
+class PreviousState(TypedDict):
+    rest: bool
+    requests: bool
+    move: Dict[str, bool]
+
+
 class ResultsController:
     def __init__(self, system_description: simulator.objects.system.SystemDescription):
-        self.production = {}
-        self.times = {}
-        self.previous_stoppers = {}
+        self.production: Dict[str, int] = {}
+        self.times: Dict[str, StopperTimeResults] = {}
+        self.previous_stoppers: Dict[str, PreviousData] = {}
         self.system_description = system_description
 
         for stopper_id, stopper_description in system_description.items():
