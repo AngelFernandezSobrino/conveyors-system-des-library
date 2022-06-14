@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     behaviour_controller2 = controller_empty.BehaviourControllerEmpty(config_parser.config)
 
-    results_controller = simulator.ResultsController(config_parser.config)
+    results_controller = simulator.BaseResultsController(config_parser.config)
 
     sim_core = simulator.Core(config_parser.config, behaviour_controller, results_controller)
 

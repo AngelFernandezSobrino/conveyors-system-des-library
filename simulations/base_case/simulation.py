@@ -17,7 +17,7 @@ if not config_parser.config_available:
 wandb.config = config_parser.config
 
 behaviour_controller = behaviour.BehaviourController(config_parser.config)
-results_controller = results.ResultsController(config_parser.config)
+results_controller = results.BaseResultsController(config_parser.config)
 
 sim_core = simulator.Core(config_parser.config, behaviour_controller, results_controller)
 

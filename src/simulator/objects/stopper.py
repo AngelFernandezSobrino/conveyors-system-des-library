@@ -23,13 +23,13 @@ class StopperInfo(TypedDict):
 class Stopper:
 
     def __init__(self, external_stopper_id: str, simulation_description: simulator.objects.system.SystemDescription, simulation: dict, events_register: TimedEventsManager,
-                 behaviour_controller: simulator.behaviour_controller.BehaviourController, results_controller: simulator.results_controller.ResultsController, debug):
+                 behaviour_controllers: list[simulator.behaviour_controller.BaseBehaviourController], results_controllers: list[simulator.results_controller.BaseResultsController], debug):
         self.debug = debug
 
         self.request_time = 0
 
-        self.behaviour_controller = behaviour_controller
-        self.results_controller = results_controller
+        self.behaviour_controllers = behaviour_controllers
+        self.results_controllers = results_controllers
         self.stopper_id = external_stopper_id
         self.simulation = simulation
         self.description = simulation_description[external_stopper_id]
@@ -73,7 +73,8 @@ class Stopper:
                 self.input_ids += [external_stopper_id]
 
     def check_request(self, *args):
-        self.behaviour_controller.check_request(self.stopper_id, {'simulation': self.simulation, 'events_register': self.events_register, 'stopper': self})
+        for behaviour_controller in self.behaviour_controllers:
+            behaviour_controller.check_request(self.stopper_id, {'simulation': self.simulation, 'events_register': self.events_register, 'stopper': self})
         if not self.request:
             return
         for destiny in self.output_ids:
@@ -86,14 +87,16 @@ class Stopper:
         self.rest = False
         self.request = True
         self.request_time = self.events_register.step
-        self.results_controller.update_times(self, self.events_register.step)
+        for results_controller in self.results_controllers:
+            results_controller.status_change(self, self.events_register.step)
 
     def start_move(self, destiny):
         self.request = False
         self.move[destiny] = True
         self.output_trays[destiny] = self.input_tray
         self.input_tray = False
-        self.results_controller.update_times(self, self.events_register.step)
+        for results_controller in self.results_controllers:
+            results_controller.status_change(self, self.events_register.step)
         self.events_register.push(self.end_move, {'destiny': destiny}, self.steps[destiny])
         if self.default_locked == 1:
             self.lock(destiny)
@@ -104,14 +107,16 @@ class Stopper:
 
     def return_rest_and_propagate(self, *args):
         self.rest = True
-        self.results_controller.update_times(self, self.events_register.step)
+        for results_controller in self.results_controllers:
+            results_controller.status_change(self, self.events_register.step)
         if self.return_rest_function:
             self.return_rest_function({'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
         self.propagate_backwards()
 
     def return_rest(self, *args):
         self.rest = True
-        self.results_controller.update_times(self, self.events_register.step)
+        for results_controller in self.results_controllers:
+            results_controller.status_change(self, self.events_register.step)
         if self.return_rest_function:
             self.return_rest_function({'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
 
@@ -143,10 +148,12 @@ class Stopper:
         self.output_trays[args['destiny']] = False
         if self.move_behaviour == 3:
             self.return_rest()
-            self.results_controller.update_times(self, self.events_register.step)
+            for results_controller in self.results_controllers:
+                results_controller.status_change(self, self.events_register.step)
             self.propagate_backwards()
         else:
-            self.results_controller.update_times(self, self.events_register.step)
+            for results_controller in self.results_controllers:
+                results_controller.status_change(self, self.events_register.step)
             self.check_request()
         self.simulation[args['destiny']].check_request()
 
@@ -164,7 +171,7 @@ if __name__ == '__main__':
 
     simulation_data_example = {}
 
-    controller = simulator.behaviour_controller.BehaviourController()
+    controller = simulator.behaviour_controller.BaseBehaviourController()
 
     from src.simulator.helpers.test_utils import system_description_example
 

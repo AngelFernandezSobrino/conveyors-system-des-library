@@ -11,7 +11,7 @@ class CheckRequestData(TypedDict):
     stopper: simulator.objects.stopper.Stopper
 
 
-class BehaviourController:
+class BaseBehaviourController:
 
     def __init__(self, system_description):
         self.system_description = system_description

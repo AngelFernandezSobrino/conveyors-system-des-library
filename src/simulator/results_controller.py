@@ -21,13 +21,33 @@ class PreviousData(TypedDict):
 
 class PreviousState(TypedDict):
     rest: bool
-    requests: bool
+    request: bool
     move: Dict[str, bool]
 
 
-class ResultsController:
+class BaseResultsController:
     def __init__(self, system_description: simulator.objects.system.SystemDescription):
+        pass
+
+    def status_change(self, stopper: Stopper, actual_time: int):
+        pass
+
+    def simulation_end(self, simulation, actual_time: int):
+        pass
+
+
+class ProductionResultsController(BaseResultsController):
+    def __init__(self, system_description: simulator.objects.system.SystemDescription):
+        super().__init__(system_description)
         self.production: Dict[str, int] = {}
+
+    def produce(self, product: Product):
+        self.production[product.model] += 1
+
+
+class TimesResultsController(BaseResultsController):
+    def __init__(self, system_description: simulator.objects.system.SystemDescription):
+        super().__init__(system_description)
         self.times: Dict[str, StopperTimeResults] = {}
         self.previous_stoppers: Dict[str, PreviousData] = {}
         self.system_description = system_description
@@ -42,8 +62,11 @@ class ResultsController:
                 'move': {v: False for v in stopper_description['destiny']}}
             self.previous_stoppers[stopper_id]['time'] = 0
 
-    def produce(self, product: Product):
-        self.production[product.model] += 1
+    def status_change(self, stopper: Stopper, actual_time: int):
+        self.update_times(stopper, actual_time)
+
+    def simulation_end(self, simulation, actual_time: int):
+        self.update_all_times(simulation, actual_time)
 
     def update_times(self, stopper: Stopper, actual_time: int):
         if self.previous_stoppers[stopper.stopper_id]['state']['rest']:

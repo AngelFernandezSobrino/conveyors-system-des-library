@@ -21,7 +21,7 @@ class SimulationConfig(TypedDict):
 
 class Core:
 
-    def __init__(self, system_description: simulator.objects.system.SystemDescription, behaviour_controller: simulator.behaviour_controller.BehaviourController, results_controller: simulator.results_controller.ResultsController) -> None:
+    def __init__(self, system_description: simulator.objects.system.SystemDescription, behaviour_controllers: list[simulator.behaviour_controller.BaseBehaviourController], results_controllers: list[simulator.results_controller.BaseResultsController]) -> None:
 
         self.simulation_config = {'real_time_mode': False, 'real_time_step': 0, 'steps': 0}
 
@@ -32,16 +32,16 @@ class Core:
 
         self.simulation_data = {}
         self.events_manager = TimedEventsManager()
-        self.results_controller = results_controller
+        self.results_controllers = results_controllers
 
         self.thread = Thread(target=self.thread_function)
 
         for stopper_id, stopper_description in system_description.items():
             self.simulation_data[stopper_id] = Stopper(stopper_id, system_description, self.simulation_data,
-                                                       self.events_manager, behaviour_controller, results_controller, False)
-
-        for step, external_function in behaviour_controller.external_functions.items():
-            self.events_manager.add(external_function, {'simulation': self.simulation_data}, step)
+                                                       self.events_manager, behaviour_controllers, results_controllers, False)
+        for behaviour_controller in behaviour_controllers:
+            for step, external_function in behaviour_controller.external_functions.items():
+                self.events_manager.add(external_function, {'simulation': self.simulation_data}, step)
 
     def sync_status(self, status):
         raise Exception('Method not implemented')
@@ -76,18 +76,22 @@ class Core:
             self.sim_thread()
 
     def sim_thead_real_time(self):
-        self.results_controller.update_all_times(self.simulation_data, self.events_manager.step)
+        for results_controller in self.results_controllers:
+            results_controller.simulation_end(self.simulation_data, self.events_manager.step)
         start_time = time.time()
         while self.run_flag and (self.simulation_config['steps'] == 0 or self.events_manager.step < self.simulation_config['steps']):
             self.events_manager.run()
             time.sleep(self.simulation_config['real_time_step'] - ((time.time() - start_time) % self.simulation_config['real_time_step']))
-        self.results_controller.update_all_times(self.simulation_data, self.events_manager.step)
+        for results_controller in self.results_controllers:
+            results_controller.simulation_end(self.simulation_data, self.events_manager.step)
 
     def sim_thread(self):
-        self.results_controller.update_all_times(self.simulation_data, self.events_manager.step)
+        for results_controller in self.results_controllers:
+            results_controller.simulation_end(self.simulation_data, self.events_manager.step)
         while self.run_flag and self.events_manager.step < self.simulation_config['steps']:
             self.events_manager.run()
-        self.results_controller.update_all_times(self.simulation_data, self.events_manager.step)
+        for results_controller in self.results_controllers:
+            results_controller.simulation_end(self.simulation_data, self.events_manager.step)
 
 
 if __name__ == '__main__':

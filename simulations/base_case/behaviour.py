@@ -4,7 +4,7 @@ from simulator.objects import Stopper, Tray, Product
 n = 0
 
 
-class BehaviourControllerBaseline(simulator.BehaviourController):
+class BehaviourControllerBaseline(simulator.BaseBehaviourController):
     def __init__(self, system_description: dict):
         super().__init__(system_description)
 
