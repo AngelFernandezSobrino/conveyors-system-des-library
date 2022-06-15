@@ -1,10 +1,10 @@
-import simulator
-from simulator.objects import Stopper, Tray, Product
+from simulator.controllers import behaviour_controller
+from simulator.objects import Tray, Product
 
 n = 0
 
 
-class BehaviourControllerBaseline(simulator.BaseBehaviourController):
+class BaselineBehaviourController(behaviour_controller.BaseBehaviourController):
     def __init__(self, system_description: dict):
         super().__init__(system_description)
 
@@ -13,8 +13,8 @@ class BehaviourControllerBaseline(simulator.BaseBehaviourController):
         }
 
         self.check_request_functions = {
-            '1': [simulator.behaviour_controller.delay, {'time': 10}],
-            '2': [simulator.behaviour_controller.delay, {'time': 5}]
+            '1': [behaviour_controller.delay, {'time': 10}],
+            '2': [behaviour_controller.delay, {'time': 5}]
         }
 
         self.return_rest_functions = {
@@ -22,14 +22,14 @@ class BehaviourControllerBaseline(simulator.BaseBehaviourController):
         }
 
 
-def load_product(params, data: simulator.behaviour_controller.CheckRequestData):
+def load_product(params, data: behaviour_controller.CheckRequestData):
     stopper = data['stopper']
     stopper.input_tray.load_product(Product(1, 2))
     data['simulation']['0'].check_request()
     n += 1
 
 
-def external_input(data: simulator.behaviour_controller.CheckRequestData):
+def external_input(data: behaviour_controller.CheckRequestData):
     global n
     if n < 30:
         data['simulation']['0'].input(Tray(n, 2))

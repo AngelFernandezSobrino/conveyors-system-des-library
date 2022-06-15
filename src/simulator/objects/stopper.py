@@ -7,8 +7,8 @@ from .tray import Tray
 
 if TYPE_CHECKING:
     import simulator.objects.system
-    import simulator.results_controller
-    import simulator.behaviour_controller
+    import simulator.controllers.results_controller
+    import simulator.controllers.behaviour_controller
 
 
 class StopperInfo(TypedDict):
@@ -22,20 +22,23 @@ class StopperInfo(TypedDict):
 
 class Stopper:
 
-    def __init__(self, external_stopper_id: str, simulation_description: simulator.objects.system.SystemDescription, simulation: dict, events_register: TimedEventsManager,
-                 behaviour_controllers: list[simulator.behaviour_controller.BaseBehaviourController], results_controllers: list[simulator.results_controller.BaseResultsController], debug):
-        self.debug = debug
+    def __init__(self, stopper_id: str, simulation_description: simulator.objects.system.SystemDescription,
+                 simulation: simulator.objects.system.SimulationData, events_register: TimedEventsManager,
+                 behaviour_controllers: list[simulator.controllers.behaviour_controller.BaseBehaviourController],
+                 results_controllers: list[simulator.controllers.results_controller.BaseResultsController], debug):
 
-        self.request_time = 0
+        self.stopper_id = stopper_id
+        self.description = simulation_description[stopper_id]
 
         self.behaviour_controllers = behaviour_controllers
         self.results_controllers = results_controllers
-        self.stopper_id = external_stopper_id
         self.simulation = simulation
-        self.description = simulation_description[external_stopper_id]
+        self.events_register = events_register
+        self.simulation_description = simulation_description
 
-        self.output_ids = simulation_description[external_stopper_id]['destiny']
-
+        self.debug = debug
+        self.default_locked = self.description['default_locked']
+        self.destiny = self.description['destiny']
         self.steps = {
             self.output_ids[k]: v
             for k, v in enumerate(self.description['steps'])
@@ -48,37 +51,47 @@ class Stopper:
             self.output_ids[k]: v
             for k, v in enumerate(self.description['move_behaviour'])
         }
+        self.output_ids = self.description['destiny']
 
-        self.default_locked = self.description['default_locked']
-
-        self.events_register = events_register
-
+        self.request_time = 0
         self.rest = True
         self.request = False
         self.move = {v: False for v in self.description['destiny']}
-        self.stop = {v: True if self.description['default_locked'] == 'True' else False for v in self.description['destiny']}
+        self.external_stop = {v: True if self.description['default_locked'] == 'True' else False for v in
+                              self.description['destiny']}
+        self.internal_stop: dict[str, dict[str, bool]] = {}
 
         self.output_trays = {v: False for v in self.description['destiny']}
-
         self.input_tray: Union[Tray, bool] = False
-        self.input_ids = []
 
         self.return_rest_function = False
+        for behaviour_controller in behaviour_controllers:
+            if self.stopper_id in behaviour_controller.return_rest_functions:
+                self.return_rest_function = behaviour_controller.return_rest_functions[self.stopper_id]
 
-        if self.stopper_id in behaviour_controller.return_rest_functions:
-            self.return_rest_function = behaviour_controller.return_rest_functions[self.stopper_id]
-
+        self.input_ids = []
         for external_stopper_id, stopper_info in simulation_description.items():
             if self.stopper_id in stopper_info['destiny']:
                 self.input_ids += [external_stopper_id]
 
+    def post_init(self):
+        self.internal_stop = {v: { v: False } for v in self.description['destiny']}
+
+        for destiny_id, destiny_stops in self.internal_stop.items():
+            for stopper in self.simulation.values():
+                if destiny_id in stopper.output_ids:
+                    destiny_stops += { stopper.stopper_id: False }
+
     def check_request(self, *args):
         for behaviour_controller in self.behaviour_controllers:
-            behaviour_controller.check_request(self.stopper_id, {'simulation': self.simulation, 'events_register': self.events_register, 'stopper': self})
+            behaviour_controller.check_request(self.stopper_id,
+                                               {'simulation': self.simulation, 'events_register': self.events_register,
+                                                'stopper': self})
         if not self.request:
             return
         for destiny in self.output_ids:
-            if self.simulation[destiny].check_availability(exclude_id=self.stopper_id) and not self.move[destiny] and not self.stop[destiny]:
+            if self.simulation[destiny].check_availability(exclude_id=self.stopper_id) and not self.move[
+                destiny] and not self.stop[destiny]:
                 self.start_move(destiny)
                 return
 
@@ -110,7 +123,8 @@ class Stopper:
         for results_controller in self.results_controllers:
             results_controller.status_change(self, self.events_register.step)
         if self.return_rest_function:
-            self.return_rest_function({'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
+            self.return_rest_function(
+                {'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
         self.propagate_backwards()
 
     def return_rest(self, *args):
@@ -118,7 +132,8 @@ class Stopper:
         for results_controller in self.results_controllers:
             results_controller.status_change(self, self.events_register.step)
         if self.return_rest_function:
-            self.return_rest_function({'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
+            self.return_rest_function(
+                {'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
 
     def propagate_backwards(self):
         if self.description['priority'] == 0:
@@ -171,12 +186,13 @@ if __name__ == '__main__':
 
     simulation_data_example = {}
 
-    controller = simulator.behaviour_controller.BaseBehaviourController()
+    controller = simulator.controllers.behaviour_controller.BaseBehaviourController()
 
     from src.simulator.helpers.test_utils import system_description_example
 
     for stopper_id, stopper_description in system_description_example.items():
-        simulation_data_example[stopper_id] = Stopper(stopper_id, system_description_example, simulation_data_example, events_manager, controller, False)
+        simulation_data_example[stopper_id] = Stopper(stopper_id, system_description_example, simulation_data_example,
+                                                      events_manager, controller, False)
         print(stopper_id)
         print(simulation_data_example[stopper_id])
 

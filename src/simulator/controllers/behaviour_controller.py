@@ -1,7 +1,6 @@
 from typing import TypedDict
 
 import simulator.objects.system
-import simulator.objects.stopper
 import simulator.helpers.timed_events_manager
 
 
@@ -25,7 +24,7 @@ class BaseBehaviourController:
         self.check_request_functions[stopper_id][0](self.check_request_functions[stopper_id][1], data)
 
 
-def delay(params, data: simulator.behaviour_controller.CheckRequestData):
+def delay(params, data: CheckRequestData):
     stopper = data['stopper']
     stopper.lock(stopper.output_ids[params['output_index']])
     if stopper.request_time == params['time']:

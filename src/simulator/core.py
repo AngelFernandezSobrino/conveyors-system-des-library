@@ -9,8 +9,8 @@ from simulator.objects.stopper import Stopper
 
 if TYPE_CHECKING:
     import simulator.objects.system
-    import simulator.results_controller.ResultsController
-    import simulator.behaviour_controller.BehaviourController
+    import simulator.controllers.results_controller.BaseResultsController
+    import simulator.controllers.behaviour_controller.BaseBehaviourController
 
 
 class SimulationConfig(TypedDict):
@@ -21,7 +21,9 @@ class SimulationConfig(TypedDict):
 
 class Core:
 
-    def __init__(self, system_description: simulator.objects.system.SystemDescription, behaviour_controllers: list[simulator.behaviour_controller.BaseBehaviourController], results_controllers: list[simulator.results_controller.BaseResultsController]) -> None:
+    def __init__(self, system_description: simulator.objects.system.SystemDescription, behaviour_controllers: list[
+        simulator.controllers.behaviour_controller.BaseBehaviourController], results_controllers: list[
+        simulator.controllers.results_controller.BaseResultsController]) -> None:
 
         self.simulation_config = {'real_time_mode': False, 'real_time_step': 0, 'steps': 0}
 
@@ -39,6 +41,10 @@ class Core:
         for stopper_id, stopper_description in system_description.items():
             self.simulation_data[stopper_id] = Stopper(stopper_id, system_description, self.simulation_data,
                                                        self.events_manager, behaviour_controllers, results_controllers, False)
+
+        for stopper in self.simulation_data.values():
+            stopper.post_init()
+
         for behaviour_controller in behaviour_controllers:
             for step, external_function in behaviour_controller.external_functions.items():
                 self.events_manager.add(external_function, {'simulation': self.simulation_data}, step)

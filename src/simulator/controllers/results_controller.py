@@ -26,7 +26,7 @@ class PreviousState(TypedDict):
 
 
 class BaseResultsController:
-    def __init__(self, system_description: simulator.objects.system.SystemDescription):
+    def __init__(self):
         pass
 
     def status_change(self, stopper: Stopper, actual_time: int):
@@ -37,8 +37,8 @@ class BaseResultsController:
 
 
 class ProductionResultsController(BaseResultsController):
-    def __init__(self, system_description: simulator.objects.system.SystemDescription):
-        super().__init__(system_description)
+    def __init__(self):
+        super().__init__()
         self.production: Dict[str, int] = {}
 
     def produce(self, product: Product):
@@ -47,7 +47,7 @@ class ProductionResultsController(BaseResultsController):
 
 class TimesResultsController(BaseResultsController):
     def __init__(self, system_description: simulator.objects.system.SystemDescription):
-        super().__init__(system_description)
+        super().__init__()
         self.times: Dict[str, StopperTimeResults] = {}
         self.previous_stoppers: Dict[str, PreviousData] = {}
         self.system_description = system_description

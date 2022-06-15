@@ -8,7 +8,7 @@ wandb.init(project="my-test-project", entity="soobbz")
 
 
 config_path = '../../data/simulator_config_v3.xlsx'
-config_parser = simulator.ConfigParser(config_path)
+config_parser = simulator.helpers.config_parser.ConfigParser(config_path)
 config_parser.parse('config_parser')
 
 if not config_parser.config_available:
@@ -16,10 +16,10 @@ if not config_parser.config_available:
 
 wandb.config = config_parser.config
 
-behaviour_controller = behaviour.BehaviourController(config_parser.config)
-results_controller = results.BaseResultsController(config_parser.config)
+behaviour_controllers = [behaviour.BaselineBehaviourController(config_parser.config)]
+results_controllers = [results.AccumulatedFinalResultsController(config_parser.config)]
 
-sim_core = simulator.Core(config_parser.config, behaviour_controller, results_controller)
+sim_core = simulator.core.Core(config_parser.config, behaviour_controllers, results_controllers)
 
 print('Running simulation...')
 print('Run steps')
@@ -29,6 +29,6 @@ sim_core.start()
 sim_core.thread.join()
 print(time.time() - start)
 for i in config_parser.config.keys():
-    print(sim_core.results_controller.times[i])
+    print(sim_core.results_controllers[0].times[i])
 
-wandb.log({"data": sim_core.results_controller.times})
+wandb.log({"data": sim_core.results_controllers[0].times})
