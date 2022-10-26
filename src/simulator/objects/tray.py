@@ -1,6 +1,11 @@
+from typing import Union
+
+from simulator.objects import Product
+
+
 class Tray:
 
-    def __init__(self, tray_id=-1, product=False):
+    def __init__(self, tray_id=-1, product: Union[Product, bool] = False):
         self.tray_id = tray_id
         self.product = product
 

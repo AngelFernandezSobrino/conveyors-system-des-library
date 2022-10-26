@@ -21,9 +21,10 @@ class SimulationConfig(TypedDict):
 
 class Core:
 
-    def __init__(self, system_description: simulator.objects.system.SystemDescription, behaviour_controllers: list[
-        simulator.controllers.behaviour_controller.BaseBehaviourController], results_controllers: list[
-        simulator.controllers.results_controller.BaseResultsController]) -> None:
+    def __init__(self,
+                 system_description: simulator.objects.system.SystemDescription,
+                 behaviour_controllers: list[simulator.controllers.behaviour_controller.BaseBehaviourController],
+                 results_controllers: list[simulator.controllers.BaseResultsController]) -> None:
 
         self.simulation_config = {'real_time_mode': False, 'real_time_step': 0, 'steps': 0}
 
@@ -40,7 +41,8 @@ class Core:
 
         for stopper_id, stopper_description in system_description.items():
             self.simulation_data[stopper_id] = Stopper(stopper_id, system_description, self.simulation_data,
-                                                       self.events_manager, behaviour_controllers, results_controllers, False)
+                                                       self.events_manager, behaviour_controllers, results_controllers,
+                                                       False)
 
         for stopper in self.simulation_data.values():
             stopper.post_init()
@@ -85,15 +87,17 @@ class Core:
         for results_controller in self.results_controllers:
             results_controller.simulation_end(self.simulation_data, self.events_manager.step)
         start_time = time.time()
-        while self.run_flag and (self.simulation_config['steps'] == 0 or self.events_manager.step < self.simulation_config['steps']):
+        while self.run_flag and (
+                self.simulation_config['steps'] == 0 or self.events_manager.step < self.simulation_config['steps']):
             self.events_manager.run()
-            time.sleep(self.simulation_config['real_time_step'] - ((time.time() - start_time) % self.simulation_config['real_time_step']))
+            time.sleep(self.simulation_config['real_time_step'] - (
+                    (time.time() - start_time) % self.simulation_config['real_time_step']))
         for results_controller in self.results_controllers:
             results_controller.simulation_end(self.simulation_data, self.events_manager.step)
 
     def sim_thread(self):
         for results_controller in self.results_controllers:
-            results_controller.simulation_end(self.simulation_data, self.events_manager.step)
+            results_controller.simulation_start(self.simulation_data, self.events_manager.step)
         while self.run_flag and self.events_manager.step < self.simulation_config['steps']:
             self.events_manager.run()
         for results_controller in self.results_controllers:

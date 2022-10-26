@@ -1,6 +1,12 @@
+from enum import Enum
+from typing import TypeVar
+
+ProductType = TypeVar('ProductType', bound=Enum)
+
+
 class Product:
 
-    def __init__(self, product_id, state=0, model=0):
+    def __init__(self, product_id: str, model: ProductType, state: str = '0'):
         self.product_id = product_id
         self.state = state
         self.model = model
@@ -10,4 +16,3 @@ class Product:
 
     def update_state(self, new_state):
         self.state = new_state
-

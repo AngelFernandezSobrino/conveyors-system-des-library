@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TypedDict, TYPE_CHECKING, Union
+from typing import TypedDict, TYPE_CHECKING, Union, Dict
 
 from simulator.helpers.timed_events_manager import TimedEventsManager
 from .tray import Tray
@@ -38,7 +38,7 @@ class Stopper:
 
         self.debug = debug
         self.default_locked = self.description['default_locked']
-        self.destiny = self.description['destiny']
+        self.output_ids = self.description['destiny']
         self.steps = {
             self.output_ids[k]: v
             for k, v in enumerate(self.description['steps'])
@@ -51,18 +51,21 @@ class Stopper:
             self.output_ids[k]: v
             for k, v in enumerate(self.description['move_behaviour'])
         }
-        self.output_ids = self.description['destiny']
 
         self.request_time = 0
         self.rest = True
         self.request = False
         self.move = {v: False for v in self.description['destiny']}
-        self.external_stop = {v: True if self.description['default_locked'] == 'True' else False for v in
-                              self.description['destiny']}
-        self.internal_stop: dict[str, dict[str, bool]] = {}
+        self.management_stop = {v: True if self.description['default_locked'] == 'True' else False for v in
+                                self.description['destiny']}
+        self.simulation_stop: dict[str, dict[str, bool]] = {}
+        self.stopper_relations: dict[str, list[str]] = {}
 
-        self.output_trays = {v: False for v in self.description['destiny']}
-        self.input_tray: Union[Tray, bool] = False
+        for destiny in self.output_ids:
+            self.stopper_relations[destiny] = []
+
+        self.output_object = {v: False for v in self.description['destiny']}
+        self.input_object: Union[Tray, bool] = False
 
         self.return_rest_function = False
         for behaviour_controller in behaviour_controllers:
@@ -75,129 +78,120 @@ class Stopper:
                 self.input_ids += [external_stopper_id]
 
     def post_init(self):
-        self.internal_stop = {v: { v: False } for v in self.description['destiny']}
+        self.simulation_stop = {v: {v: False} for v in self.description['destiny']}
 
-        for destiny_id, destiny_stops in self.internal_stop.items():
+        for destiny_id, destiny_stops in self.simulation_stop.items():
             for stopper in self.simulation.values():
-                if destiny_id in stopper.output_ids:
-                    destiny_stops += { stopper.stopper_id: False }
+                if destiny_id in stopper.output_ids and stopper != self:
+                    destiny_stops[stopper.stopper_id] = False
+
+        for destiny_id in self.output_ids:
+            for stopper in self.simulation.values():
+                if destiny_id in stopper.output_ids and stopper != self:
+                    self.stopper_relations[destiny_id] += [stopper.stopper_id]
+
+    def in_input(self, tray: Tray):
+        self.input_object = tray
+        self.rest = False
+        self.request = True
+        self.request_time = self.events_register.step
+        self.status_change()
+        self.out_lock_origin()
+        self.check_request()
 
     def check_request(self, *args):
+        if not self.request:
+            return
         for behaviour_controller in self.behaviour_controllers:
             behaviour_controller.check_request(self.stopper_id,
                                                {'simulation': self.simulation, 'events_register': self.events_register,
                                                 'stopper': self})
-        if not self.request:
-            return
         for destiny in self.output_ids:
-            if self.simulation[destiny].check_availability(exclude_id=self.stopper_id) and not self.move[
-                destiny] and not self.stop[destiny]:
+            if self.check_destiny_available(destiny) and not self.move[destiny] and not self.management_stop[destiny]:
                 self.start_move(destiny)
                 return
-
-    def input(self, tray: Tray):
-        self.input_tray = tray
-        self.rest = False
-        self.request = True
-        self.request_time = self.events_register.step
-        for results_controller in self.results_controllers:
-            results_controller.status_change(self, self.events_register.step)
 
     def start_move(self, destiny):
         self.request = False
         self.move[destiny] = True
-        self.output_trays[destiny] = self.input_tray
-        self.input_tray = False
-        for results_controller in self.results_controllers:
-            results_controller.status_change(self, self.events_register.step)
-        self.events_register.push(self.end_move, {'destiny': destiny}, self.steps[destiny])
+        self.output_object[destiny] = self.input_object
+        self.input_object = False
+        self.status_change()
+        self.events_register.push(self.out_end_move, {'destiny': destiny}, self.steps[destiny])
         if self.default_locked == 1:
-            self.lock(destiny)
+            self.in_lock(self.output_ids)
         if self.move_behaviour[destiny] == 1:
-            self.events_register.push(self.return_rest_and_propagate, {}, self.rest_steps[destiny])
+            self.events_register.push(self.return_rest, {}, self.rest_steps[destiny])
         if self.move_behaviour[destiny] == 0:
-            self.return_rest_and_propagate()
-
-    def return_rest_and_propagate(self, *args):
-        self.rest = True
-        for results_controller in self.results_controllers:
-            results_controller.status_change(self, self.events_register.step)
-        if self.return_rest_function:
-            self.return_rest_function(
-                {'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
-        self.propagate_backwards()
+            self.return_rest()
 
     def return_rest(self, *args):
         self.rest = True
-        for results_controller in self.results_controllers:
-            results_controller.status_change(self, self.events_register.step)
+        self.status_change()
         if self.return_rest_function:
             self.return_rest_function(
                 {'simulation': self.simulation, 'events_register': self.events_register, 'stopper_id': self.stopper_id})
+        self.out_unlock_origin()
 
-    def propagate_backwards(self):
-        if self.description['priority'] == 0:
-            for origin in self.input_ids:
-                self.simulation[origin].check_request()
-        else:
-            for origin in reversed(self.input_ids):
-                self.simulation[origin].check_request()
-
-    def check_availability(self, exclude_id=None):
-        for origin in self.input_ids:
-            if origin == exclude_id:
-                pass
-            else:
-                if self.simulation[origin].get_move_to(self.stopper_id):
-                    return False
-        if self.rest:
-            return True
-        return False
-
-    def get_move_to(self, destiny):
-        return self.move[destiny]
-
-    def end_move(self, args):
+    def out_end_move(self, args):
         self.move[args['destiny']] = False
-        self.simulation[args['destiny']].input(self.output_trays[args['destiny']])
-        self.output_trays[args['destiny']] = False
+        self.out_output(args['destiny'])
+
         if self.move_behaviour == 3:
             self.return_rest()
-            for results_controller in self.results_controllers:
-                results_controller.status_change(self, self.events_register.step)
-            self.propagate_backwards()
         else:
-            for results_controller in self.results_controllers:
-                results_controller.status_change(self, self.events_register.step)
-            self.check_request()
-        self.simulation[args['destiny']].check_request()
+            self.status_change()
+            if self.request:
+                self.check_request()
 
-    def lock(self, output_id):
-        self.stop[output_id] = True
+    def out_output(self, destiny):
+        output_object = self.output_object[destiny]
+        self.output_object[destiny] = False
+        self.simulation[destiny].in_input(output_object)
 
-    def unlock(self, output_id):
-        self.stop[output_id] = False
+    def status_change(self):
+        for results_controller in self.results_controllers:
+            results_controller.status_change(self, self.events_register.step)
+
+    def check_destiny_available(self, destiny) -> bool:
+        for relative in self.simulation_stop[destiny].values():
+            if relative:
+                return False
+        return True
+
+    def in_lock(self, output_ids: list[str]):
+        for output_id in output_ids:
+            self.management_stop[output_id] = True
+
+    def in_unlock(self, output_ids: list[str]):
+        for output_id in output_ids:
+            self.management_stop[output_id] = False
+
+    def in_update_lock(self, lock_output_ids: Dict[str, bool]):
+        for output_id, lock in lock_output_ids.items():
+            self.management_stop[output_id] = lock
+
+    def in_relation_lock(self, output_id, relative):
+        self.simulation_stop[output_id][relative] = True
         self.check_request()
 
+    def in_relation_unlock(self, output_id, relative):
+        self.simulation_stop[output_id][relative] = False
+        self.check_request()
 
-if __name__ == '__main__':
+    def out_lock_origin(self):
+        for origin in self.input_ids:
+            self.simulation[origin].in_relation_lock(self.stopper_id, self.stopper_id)
 
-    events_manager = TimedEventsManager()
+    def out_unlock_origin(self):
+        for origin in self.input_ids:
+            self.simulation[origin].in_relation_unlock(self.stopper_id, self.stopper_id)
+        pass
 
-    simulation_data_example = {}
+    def out_lock_relation(self, destiny):
+        for relative_stopper in self.stopper_relations[destiny]:
+            self.simulation[relative_stopper].in_relation_lock(destiny, self.stopper_id)
 
-    controller = simulator.controllers.behaviour_controller.BaseBehaviourController()
-
-    from src.simulator.helpers.test_utils import system_description_example
-
-    for stopper_id, stopper_description in system_description_example.items():
-        simulation_data_example[stopper_id] = Stopper(stopper_id, system_description_example, simulation_data_example,
-                                                      events_manager, controller, False)
-        print(stopper_id)
-        print(simulation_data_example[stopper_id])
-
-    simulation_data_example['0'].input(Tray(23, 2))
-
-    for i in range(0, 20000):
-        print(i)
-        events_manager.run()
+    def out_unlock_relation(self, destiny):
+        for relative_stopper in self.stopper_relations[destiny]:
+            self.simulation[relative_stopper].in_relation_unlock(destiny, self.stopper_id)
