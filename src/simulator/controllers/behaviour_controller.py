@@ -29,6 +29,6 @@ def delay(params, data: CheckRequestData):
     stopper = data['stopper']
     for stop in stopper.management_stop:
         if not stop:
-            stopper.in_lock(stopper.output_ids)
+            stopper.in_event_lock(stopper.output_ids)
     if stopper.request_time == params['time']:
-        data['events_register'].push(stopper.in_unlock, stopper.output_ids[0], params['time'])
+        data['events_register'].push(stopper.in_event_unlock, stopper.output_ids[0], params['time'])

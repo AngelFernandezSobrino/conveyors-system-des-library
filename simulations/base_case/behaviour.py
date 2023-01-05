@@ -131,7 +131,7 @@ class BaselineBehaviourController(behaviour_controller.BaseBehaviourController):
 def external_input(data: behaviour_controller.CheckRequestData):
     global tray_index
     if tray_index < 30:
-        data['simulation']['PT01'].in_input(Tray(tray_index, False))
+        data['simulation']['PT01'].in_event_input_tray(Tray(tray_index, False))
         tray_index += 1
 
 

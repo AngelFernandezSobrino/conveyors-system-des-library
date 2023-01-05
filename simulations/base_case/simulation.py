@@ -7,7 +7,7 @@ import wandb
 
 wandb.init(project="my-2-test-project", entity="soobbz")
 
-config_path = '../../../data/simulator_config_v3.xlsx'
+config_path = '../../data/simulator_config_v3.xlsx'
 config_parser = simulator.helpers.ConfigParser(config_path)
 config_parser.parse('config_parser')
 
@@ -25,10 +25,9 @@ sim_core = simulator.Core(config_parser.config, behaviour_controllers, results_c
 
 print('Running simulation...')
 print('Run steps')
-sim_core.run_steps(50000)
+sim_core.config_steps(50000)
 start = time.time()
-sim_core.start()
-sim_core.thread.join()
+sim_core.sim_runner()
 print(time.time() - start)
 print(results_controllers[0].production_history[behaviour.ProductType.product_0])
 print(f'production_{behaviour.ProductType.product_0.name}')

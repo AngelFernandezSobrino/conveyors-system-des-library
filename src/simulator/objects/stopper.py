@@ -27,16 +27,26 @@ class Stopper:
                  behaviour_controllers: list[simulator.controllers.behaviour_controller.BaseBehaviourController],
                  results_controllers: list[simulator.controllers.results_controller.BaseResultsController], debug):
 
+        # Id of the stopper
         self.stopper_id = stopper_id
+        # Stopper description data
         self.description = simulation_description[stopper_id]
 
+        # Controllers pointers
         self.behaviour_controllers = behaviour_controllers
         self.results_controllers = results_controllers
+
+        # Simulation objects pointers
         self.simulation = simulation
         self.events_register = events_register
+
+        # Simulation description data
         self.simulation_description = simulation_description
 
+        # Debug mode
         self.debug = debug
+
+        # Stopper behaviour data
         self.default_locked = self.description['default_locked']
         self.output_ids = self.description['destiny']
         self.steps = {
@@ -52,10 +62,12 @@ class Stopper:
             for k, v in enumerate(self.description['move_behaviour'])
         }
 
-        self.request_time = 0
+        # Stopper state machine
         self.rest = True
         self.request = False
         self.move = {v: False for v in self.description['destiny']}
+
+        # Stopper stop flags
         self.management_stop = {v: True if self.description['default_locked'] == 'True' else False for v in
                                 self.description['destiny']}
         self.simulation_stop: dict[str, dict[str, bool]] = {}
@@ -90,7 +102,7 @@ class Stopper:
                 if destiny_id in stopper.output_ids and stopper != self:
                     self.stopper_relations[destiny_id] += [stopper.stopper_id]
 
-    def in_input(self, tray: Tray):
+    def in_event_input_tray(self, tray: Tray):
         self.input_object = tray
         self.rest = False
         self.request = True
@@ -99,7 +111,7 @@ class Stopper:
         self.out_lock_origin()
         self.check_request()
 
-    def check_request(self, *args):
+    def transition_check_request(self, *args):
         if not self.request:
             return
         for behaviour_controller in self.behaviour_controllers:
@@ -111,7 +123,7 @@ class Stopper:
                 self.start_move(destiny)
                 return
 
-    def start_move(self, destiny):
+    def transition_start_move(self, destiny):
         self.request = False
         self.move[destiny] = True
         self.output_object[destiny] = self.input_object
@@ -119,7 +131,7 @@ class Stopper:
         self.status_change()
         self.events_register.push(self.out_end_move, {'destiny': destiny}, self.steps[destiny])
         if self.default_locked == 1:
-            self.in_lock(self.output_ids)
+            self.in_event_lock(self.output_ids)
         if self.move_behaviour[destiny] == 1:
             self.events_register.push(self.return_rest, {}, self.rest_steps[destiny])
         if self.move_behaviour[destiny] == 0:
@@ -147,11 +159,7 @@ class Stopper:
     def out_output(self, destiny):
         output_object = self.output_object[destiny]
         self.output_object[destiny] = False
-        self.simulation[destiny].in_input(output_object)
-
-    def status_change(self):
-        for results_controller in self.results_controllers:
-            results_controller.status_change(self, self.events_register.step)
+        self.simulation[destiny].in_event_input_tray(output_object)
 
     def check_destiny_available(self, destiny) -> bool:
         for relative in self.simulation_stop[destiny].values():
@@ -159,17 +167,13 @@ class Stopper:
                 return False
         return True
 
-    def in_lock(self, output_ids: list[str]):
+    def in_event_lock(self, output_ids: list[str]):
         for output_id in output_ids:
             self.management_stop[output_id] = True
 
-    def in_unlock(self, output_ids: list[str]):
+    def in_event_unlock(self, output_ids: list[str]):
         for output_id in output_ids:
             self.management_stop[output_id] = False
-
-    def in_update_lock(self, lock_output_ids: Dict[str, bool]):
-        for output_id, lock in lock_output_ids.items():
-            self.management_stop[output_id] = lock
 
     def in_relation_lock(self, output_id, relative):
         self.simulation_stop[output_id][relative] = True
@@ -195,3 +199,8 @@ class Stopper:
     def out_unlock_relation(self, destiny):
         for relative_stopper in self.stopper_relations[destiny]:
             self.simulation[relative_stopper].in_relation_unlock(destiny, self.stopper_id)
+
+    # Results helpers functions
+    def status_change(self):
+        for results_controller in self.results_controllers:
+            results_controller.status_change(self, self.events_register.step)
