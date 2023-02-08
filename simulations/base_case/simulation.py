@@ -1,3 +1,7 @@
+import sys
+path.
+sys.path.append('../../src/')
+
 import simulator
 
 import time
@@ -7,7 +11,7 @@ import wandb
 
 wandb.init(project="my-2-test-project", entity="soobbz")
 
-config_path = '../../data/simulator_config_v3.xlsx'
+config_path = './simulator_config.xlsx'
 config_parser = simulator.helpers.ConfigParser(config_path)
 config_parser.parse('config_parser')
 

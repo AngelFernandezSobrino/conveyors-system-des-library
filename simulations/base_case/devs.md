@@ -12,4 +12,4 @@ S = { Rest, Request, [Move], [MoveRest], [MoveRequest] }
 s0 = Rest
 ta(Rest) = +
 ta(Request) = <>
-    
+
