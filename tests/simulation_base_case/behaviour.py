@@ -1,8 +1,8 @@
 from typing import Dict
 from enum import Enum
 
-from simulator.controllers import behaviour_controller
-from simulator.objects import Tray, Product
+from sim.controllers import behaviour_controller
+from sim.objects import Tray, Item
 
 
 class ProductType(Enum):

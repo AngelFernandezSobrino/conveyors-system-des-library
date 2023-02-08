@@ -4,11 +4,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, TypedDict, Dict, List
 from copy import deepcopy
 
-from simulator.objects import Product, Stopper
-from simulator.objects.product import ProductType
+from sim.objects import Item, Stopper
 
 if TYPE_CHECKING:
-    import simulator.objects.system
+    import sim.objects.system
 
 
 class StopperTimeResults(TypedDict):
@@ -32,45 +31,48 @@ class BaseResultsController:
     def __init__(self):
         pass
 
+    def simulation_start(self, simulation, actual_time: int):
+        raise NotImplementedError
+
     def status_change(self, stopper: Stopper, actual_time: int):
-        pass
+        raise NotImplementedError
 
     def simulation_end(self, simulation, actual_time: int):
-        pass
+        raise NotImplementedError
 
 
-class ProductionResultsController(BaseResultsController):
-    def __init__(self, product_models):
+class CounterController(BaseResultsController):
+    def __init__(self, item_types: List[str]):
         super().__init__()
 
-        self.product_models = product_models
-        self.production: Dict[str, int] = {}
-        self.production_history: Dict[str, List[List[int]]] = {}
+        self.item_types = item_types
+        self.counter: Dict[str, int] = {}
+        self.counter_history: Dict[str, List[List[int]]] = {}
 
-    def produce(self, product: Product, actual_time: int):
-        self.production[product.model] += 1
-        self.production_history[product.model].append([actual_time, self.production[product.model]])
+    def produce(self, Item: Item, actual_time: int):
+        self.counter[Item.item_type] += 1
+        self.counter_history[Item.item_type].append([actual_time, self.counter[Item.model]])
         # self.production_history[product.model]['time'].append(actual_time)
         # self.production_history[product.model]['value'].append(self.production[product.model])
 
     def simulation_start(self, simulation, actual_time: int):
-        for model in self.product_models:
-            self.production[model] = 0
-            self.production_history[model] = [[0, 0]]
-            self.production_history[model].append([actual_time, self.production[model]])
+        for model in self.item_types:
+            self.counter[model] = 0
+            self.counter_history[model] = [[0, 0]]
+            self.counter_history[model].append([actual_time, self.counter[model]])
             # self.production_history[model] = {}
             # self.production_history[model]['time'] = [0]
             # self.production_history[model]['value'] = [0]
 
     def simulation_end(self, simulation, actual_time: int):
-        for model in self.product_models:
-            self.production_history[model].append([actual_time, self.production[model]])
+        for model in self.item_types:
+            self.counter_history[model].append([actual_time, self.counter[model]])
             # self.production_history[model]['time'].append(actual_time)
             # self.production_history[model]['value'].append(self.production[model])
 
 
-class TimesResultsController(BaseResultsController):
-    def __init__(self, system_description: simulator.objects.system.SystemDescription):
+class TimesController(BaseResultsController):
+    def __init__(self, system_description: sim.objects.system.SystemDescription):
         super().__init__()
         self.time_vector: List[int] = []
         self.times: Dict[str, StopperTimeResults] = {}

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TypedDict, TYPE_CHECKING, Union, Dict
 
-from simulator.helpers.timed_events_manager import TimedEventsManager
+from sim.helpers.timed_events_manager import TimedEventsManager
 from .tray import Tray
 
 if TYPE_CHECKING:
-    import simulator.objects.system
-    import simulator.controllers.results_controller
-    import simulator.controllers.behaviour_controller
+    import sim.objects.system
+    import sim.controllers.results_controller
+    import sim.controllers.behaviour_controller
 
 
 class StopperInfo(TypedDict):
@@ -22,10 +22,10 @@ class StopperInfo(TypedDict):
 
 class Stopper:
 
-    def __init__(self, stopper_id: str, simulation_description: simulator.objects.system.SystemDescription,
-                 simulation: simulator.objects.system.SimulationData, events_register: TimedEventsManager,
-                 behaviour_controllers: list[simulator.controllers.behaviour_controller.BaseBehaviourController],
-                 results_controllers: list[simulator.controllers.results_controller.BaseResultsController], debug):
+    def __init__(self, stopper_id: str, simulation_description: sim.objects.system.SystemDescription,
+                 simulation: sim.objects.system.SimulationData, events_register: TimedEventsManager,
+                 behaviour_controllers: Dict[str, sim.controllers.behaviour_controller.BaseBehaviourController],
+                 results_controllers: Dict[str, sim.controllers.results_controller.BaseResultsController], debug):
 
         # Id of the stopper
         self.stopper_id = stopper_id
@@ -80,7 +80,7 @@ class Stopper:
         self.input_object: Union[Tray, bool] = False
 
         self.return_rest_function = False
-        for behaviour_controller in behaviour_controllers:
+        for behaviour_controller in behaviour_controllers.values():
             if self.stopper_id in behaviour_controller.return_rest_functions:
                 self.return_rest_function = behaviour_controller.return_rest_functions[self.stopper_id]
 
@@ -114,7 +114,7 @@ class Stopper:
     def transition_check_request(self, *args):
         if not self.request:
             return
-        for behaviour_controller in self.behaviour_controllers:
+        for behaviour_controller in self.behaviour_controllers.values():
             behaviour_controller.check_request(self.stopper_id,
                                                {'simulation': self.simulation, 'events_register': self.events_register,
                                                 'stopper': self})
@@ -202,5 +202,5 @@ class Stopper:
 
     # Results helpers functions
     def status_change(self):
-        for results_controller in self.results_controllers:
+        for results_controller in self.results_controllers.values():
             results_controller.status_change(self, self.events_register.step)

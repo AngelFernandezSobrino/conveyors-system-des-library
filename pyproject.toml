@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "logistics-conveyors-des-library"
+version = "0.1.0"
+description = ""
+authors = ["Ángel Fernández Sobrino <fernandezsobrinoangel@gmail.com>"]
+readme = "README.md"
+packages = [{include = "sim"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+openpyxl = "^3.1.0"
+wandb = "^0.13.10"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.0"
+pytest-cov = "^4.0.0"
+pytest-html = "^3.2.0"
+black = { version = "^23.1a1", allow-prereleases = true }
+pre-commit = "^2.21.0"
+genbadge = { extras = ["all"], version = "^1.1.0" }
+poethepoet = "^0.18.1"
+
+[tool.poe.tasks]
+tests = "poetry run pytest"
+tests-cov = "poetry run pytest --cov=sim --cov-report=term"
+lint = "poetry run black ./sim/* ./tests/*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

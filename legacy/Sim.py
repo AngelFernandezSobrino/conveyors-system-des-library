@@ -1,7 +1,7 @@
 ######## Importacion librerias ########
 import time
 from influxdb import InfluxDBClient
-from simulator.objects import tray
+from sim.objects import tray
 import copy
 import tkinter
 import Utilities as Ut

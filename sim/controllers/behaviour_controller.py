@@ -1,13 +1,13 @@
 from typing import TypedDict
 
-import simulator.objects.system
-import simulator.helpers.timed_events_manager
+import sim.objects.system
+import sim.helpers.timed_events_manager
 
 
 class CheckRequestData(TypedDict):
-    simulation: simulator.objects.system.SimulationData
-    events_register: simulator.helpers.timed_events_manager.TimedEventsManager
-    stopper: simulator.objects.stopper.Stopper
+    simulation: sim.objects.system.SimulationData
+    events_register: sim.helpers.timed_events_manager.TimedEventsManager
+    stopper: sim.objects.stopper.Stopper
 
 
 class BaseBehaviourController:
