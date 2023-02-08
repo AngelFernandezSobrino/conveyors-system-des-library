@@ -24,6 +24,7 @@ poethepoet = "^0.18.1"
 tests = "poetry run pytest"
 tests-cov = "poetry run pytest --cov=sim --cov-report=term"
 lint = "poetry run black ./sim/* ./tests/*"
+sim-base = "poetry run python tests/sim/main.py"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,6 +1,6 @@
 import time
 import os
-from typing import Dict
+from typing import Dict, TypedDict
 
 import wandb
 
@@ -21,13 +21,17 @@ if not config_parser.config_available:
 config = wandb.config
 config.data = config_parser.config
 
-behaviours: Dict["baseline": behaviour_controller.BaseBehaviourController] = {
+behavioursDict = TypedDict('behavioursType', {"baseline": behaviour_controller.BaseBehaviourController})
+
+behaviours: behavioursDict = {
     "baseline": custom_behaviour.BaselineBehaviourController(
         config_parser.config
     )
 }
 
-results: Dict["production": results_controller.CounterController, "busyness": results_controller.TimesController] = {
+resultsDict = TypedDict('resultsType', {"production": results_controller.CounterController, "busyness": results_controller.TimesController})
+
+results: resultsDict = {
     "production": results_controller.CounterController(
         custom_behaviour.ProductType
     ),

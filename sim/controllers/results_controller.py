@@ -132,7 +132,7 @@ class TimesController(BaseResultsController):
                 self.times[stopper.stopper_id]['move'][destiny] += \
                     actual_time - self.previous_stoppers[stopper.stopper_id]['time']
 
-        self.previous_stoppers[stopper.stopper_id]['state']['rest'] = deepcopy(stopper.rest)
+        self.previous_stoppers[stopper.stopper_id]['state']['rest'] = deepcopy(stopper.available)
         self.previous_stoppers[stopper.stopper_id]['state']['request'] = deepcopy(stopper.request)
         self.previous_stoppers[stopper.stopper_id]['state']['move'] = deepcopy(stopper.move)
         self.previous_stoppers[stopper.stopper_id]['time'] = actual_time
