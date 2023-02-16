@@ -1,10 +1,10 @@
 from __future__ import annotations
-
-from typing import Dict
 from typing import TYPE_CHECKING
+from typing import Dict
 
-import sim.objects.stopper
+if TYPE_CHECKING:
+    import sim.objects.stopper.core
 
-SystemDescription = Dict[str, sim.objects.stopper.StopperInfo]
+SystemDescription = Dict[sim.objects.stopper.core.StopperId, sim.objects.stopper.core.StopperInfo]
 
-SimulationData = Dict[str, sim.objects.stopper.Stopper]
+SimulationData = Dict[sim.objects.stopper.core.StopperId, sim.objects.stopper.core.Stopper]

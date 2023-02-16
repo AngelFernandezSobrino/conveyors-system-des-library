@@ -1,9 +1,14 @@
+from __future__ import annotations
 from typing import Dict, TypedDict, TYPE_CHECKING
+
 import time
 
-from sim.helpers.timed_events_manager import TimedEventsManager
-from sim.objects.stopper import Stopper
-import sim.objects.system
+from sim.helpers.timed_events_manager import Event, TimedEventsManager
+from sim.objects.stopper.core import Stopper
+
+if TYPE_CHECKING:
+    import sim.objects.system
+
 import sim.controllers.results_controller
 import sim.controllers.behaviour_controller
 
@@ -59,8 +64,9 @@ class Core:
                 step,
                 external_function,
             ) in behaviour_controller.external_functions.items():
+                print('Add external function ' + str(external_function) + ' at step ' + str(step))
                 self.events_manager.add(
-                    external_function, {"simulation": self.simulation_data}, step
+                    Event(external_function, ({"simulation": self.simulation_data},), {}), step
                 )
 
     def config_steps(self, steps: int):
@@ -104,15 +110,19 @@ class Core:
             )
 
     def sim_runner(self):
+        self.run_flag = True
         for results_controller in self.results_controllers.values():
             results_controller.simulation_start(
                 self.simulation_data, self.events_manager.step
             )
-
+        print('Run flag: ' + str(self.run_flag))
+        print('Steps: ' + str(self.simulation_config["steps"]))
+        print('Events manager step: ' + str(self.events_manager.step))
         while (
             self.run_flag and self.events_manager.step < self.simulation_config["steps"]
         ):
-            self.events_manager.run()
+            self.events_manager.run()   
+            print(self.events_manager.step)
 
         for results_controller in self.results_controllers.values():
             results_controller.simulation_end(

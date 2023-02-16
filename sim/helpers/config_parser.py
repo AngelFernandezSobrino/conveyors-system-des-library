@@ -1,15 +1,20 @@
+from typing import TYPE_CHECKING
+
 import openpyxl as xl
 import itertools
-import pprint
 
+import pprint
 pp = pprint.PrettyPrinter(depth=4)
+
+if TYPE_CHECKING:
+    from sim.objects.system import SystemDescription
 
 
 class ConfigParser:
 
     def __init__(self, file_directory) -> None:
         self.file_directory: str = file_directory
-        self.config: dict = {}
+        self.config: SystemDescription = {}
         self.config_available = False
 
     def parse(self, sheet_name):

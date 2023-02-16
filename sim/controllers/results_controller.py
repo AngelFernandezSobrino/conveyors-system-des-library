@@ -1,12 +1,12 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING, TypedDict, Dict, List
 
 from enum import Enum
-from typing import TYPE_CHECKING, TypedDict, Dict, List
 from copy import deepcopy
 
-from sim.objects import Item, Stopper
 
 if TYPE_CHECKING:
+    from sim.objects import Item, Stopper
     import sim.objects.system
 
 
@@ -35,7 +35,7 @@ class BaseResultsController:
         raise NotImplementedError
 
     def status_change(self, stopper: Stopper, actual_time: int):
-        raise NotImplementedError
+        pass
 
     def simulation_end(self, simulation, actual_time: int):
         raise NotImplementedError
@@ -127,14 +127,14 @@ class TimesController(BaseResultsController):
             self.times[stopper.stopper_id]['request'] += actual_time - \
                                                          self.previous_stoppers[stopper.stopper_id]['time']
 
-        for destiny in stopper.output_ids:
+        for destiny in stopper.output_stoppers_ids:
             if self.previous_stoppers[stopper.stopper_id]['state']['move'][destiny]:
                 self.times[stopper.stopper_id]['move'][destiny] += \
                     actual_time - self.previous_stoppers[stopper.stopper_id]['time']
 
-        self.previous_stoppers[stopper.stopper_id]['state']['rest'] = deepcopy(stopper.available)
-        self.previous_stoppers[stopper.stopper_id]['state']['request'] = deepcopy(stopper.request)
-        self.previous_stoppers[stopper.stopper_id]['state']['move'] = deepcopy(stopper.move)
+        self.previous_stoppers[stopper.stopper_id]['state']['rest'] = deepcopy(stopper.states.available)
+        self.previous_stoppers[stopper.stopper_id]['state']['request'] = deepcopy(stopper.states.request)
+        self.previous_stoppers[stopper.stopper_id]['state']['move'] = deepcopy(stopper.states.move)
         self.previous_stoppers[stopper.stopper_id]['time'] = actual_time
 
     def update_all_times(self, simulation, actual_time: int):
