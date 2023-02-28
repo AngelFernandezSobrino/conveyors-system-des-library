@@ -5,6 +5,6 @@ from typing import Dict
 if TYPE_CHECKING:
     import sim.objects.stopper.core
 
-SystemDescription = Dict[sim.objects.stopper.core.StopperId, sim.objects.stopper.core.StopperInfo]
+SystemDescription = Dict[sim.objects.stopper.core.StopperId, sim.objects.stopper.core.StopperDescription]
 
 SimulationData = Dict[sim.objects.stopper.core.StopperId, sim.objects.stopper.core.Stopper]

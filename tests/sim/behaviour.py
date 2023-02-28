@@ -137,7 +137,7 @@ def external_input(checkRequestData: behaviour_controller.CheckRequestData):
 
 
 def calculate_busyness(checkRequestData: behaviour_controller.CheckRequestData):
-    checkRequestData['simulation']['PT01'].results_controllers[1].calculate_busyness(checkRequestData['simulation'], checkRequestData['simulation']['PT01'].events_register.step)
+    checkRequestData['simulation']['PT01'].results_controllers['busyness'].calculate_busyness(checkRequestData['simulation'], checkRequestData['simulation']['PT01'].events_manager.step)
 
 
 def produce(params, checkRequestData: behaviour_controller.CheckRequestData):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+from sim.helpers.timed_events_manager import Event
 
 
 if TYPE_CHECKING:
@@ -55,23 +56,23 @@ class State:
         self.move[destiny] = True
         self.c.output_items[destiny] = self.c.input_item
         self.c.input_item = False
-        self.c.events_register.push(
-            self.end_move, {"destiny": destiny}, self.c.move_steps[destiny]
+        self.c.events_manager.push(
+            Event(self.end_move, tuple(), {"destiny": destiny}), self.c.move_steps[destiny]
         )
         if self.c.default_stopped == 1:
             self.management_stop[destiny] = True
             
         if self.c.move_behaviour[destiny] == 1:
-            self.c.events_register.push(
+            self.c.events_manager.push(
                 self.return_rest, {}, self.c.return_available_steps[destiny]
             )
         if self.c.move_behaviour[destiny] == 0:
             self.return_rest()
         self.c.state_change()
 
-    def end_move(self, args):
-        self.move[args["destiny"]] = False
-        self.c.output_events.tray_send(args["destiny"])
+    def end_move(self, destiny: str):
+        self.move[destiny] = False
+        self.c.output_events.tray_send(destiny)
         if self.c.move_behaviour == 3:
             self.return_rest()
         self.c.state_change()

@@ -19,7 +19,7 @@ class SimulationConfig(TypedDict):
     steps: int
 
 
-class Core:
+class Simulation:
     def __init__(
         self,
         system_description: sim.objects.system.SystemDescription,
@@ -41,22 +41,22 @@ class Core:
 
         self.end_callback = None
 
-        self.simulation_data = {}
+        self.stoppers = {}
         self.events_manager = TimedEventsManager()
         self.results_controllers = results_controllers
 
-        for stopper_id, stopper_description in system_description.items():
-            self.simulation_data[stopper_id] = Stopper(
+        for stopper_id, stopper_description in self.system_description.items():
+            self.stoppers[stopper_id] = Stopper(
                 stopper_id,
-                system_description,
-                self.simulation_data,
-                self.events_manager,
+                stopper_description,
+                self.system_description,
+                self,
                 behaviour_controllers,
                 results_controllers,
                 False,
             )
 
-        for stopper in self.simulation_data.values():
+        for stopper in self.stoppers.values():
             stopper.post_init()
 
         for behaviour_controller in behaviour_controllers.values():
@@ -66,7 +66,7 @@ class Core:
             ) in behaviour_controller.external_functions.items():
                 print('Add external function ' + str(external_function) + ' at step ' + str(step))
                 self.events_manager.add(
-                    Event(external_function, ({"simulation": self.simulation_data},), {}), step
+                    Event(external_function, ({"simulation": self.stoppers},), {}), step
                 )
 
     def config_steps(self, steps: int):
@@ -86,9 +86,9 @@ class Core:
         self.simulation_config = simulation_config
 
     def sim_runner_real_time(self):
-        for results_controller in self.results_controllers:
+        for results_controller in self.results_controllers.values():
             results_controller.simulation_end(
-                self.simulation_data, self.events_manager.step
+                self.stoppers, self.events_manager.step
             )
 
         start_time = time.time()
@@ -106,14 +106,14 @@ class Core:
             )
         for results_controller in self.results_controllers:
             results_controller.simulation_end(
-                self.simulation_data, self.events_manager.step
+                self.stoppers, self.events_manager.step
             )
 
     def sim_runner(self):
         self.run_flag = True
         for results_controller in self.results_controllers.values():
             results_controller.simulation_start(
-                self.simulation_data, self.events_manager.step
+                self.stoppers, self.events_manager.step
             )
         print('Run flag: ' + str(self.run_flag))
         print('Steps: ' + str(self.simulation_config["steps"]))
@@ -126,13 +126,13 @@ class Core:
 
         for results_controller in self.results_controllers.values():
             results_controller.simulation_end(
-                self.simulation_data, self.events_manager.step
+                self.stoppers, self.events_manager.step
             )
 
 
 if __name__ == "__main__":
     from sim.helpers.test_utils import system_description_example
 
-    core = Core(system_description_example)
+    core = Simulation(system_description_example)
     core.set_config({"real_time_mode": False, "real_time_step": 0, "steps": 10})
     core.sim_runner()

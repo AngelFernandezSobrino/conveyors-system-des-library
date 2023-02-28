@@ -39,7 +39,7 @@ results: resultsDict = {
     "busyness": results_controller.TimesController(config_parser.config),
 }
 
-sim_core = sim.core.Core(config_parser.config, behaviours, results)
+sim_core = sim.core.Simulation(config_parser.config, behaviours, results)
 
 print("Running simulation...")
 print("Run steps")

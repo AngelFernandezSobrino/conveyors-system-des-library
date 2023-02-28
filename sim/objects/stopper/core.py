@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import TypedDict, TYPE_CHECKING, Union, Dict
 
-from sim.helpers.timed_events_manager import TimedEventsManager
 from sim.objects.tray import Tray
 from . import events
 from . import states
@@ -11,11 +10,12 @@ if TYPE_CHECKING:
 
 import sim.controllers.results_controller
 import sim.controllers.behaviour_controller
+import sim.core
 
 StopperId = str
 
 
-class StopperInfo(TypedDict):
+class StopperDescription(TypedDict):
     destiny: list[StopperId]
     steps: list[int]
     move_behaviour: list[str]
@@ -28,9 +28,9 @@ class Stopper:
     def __init__(
         self,
         stopper_id: str,
+        stopper_description: StopperDescription,
         simulation_description: sim.objects.system.SystemDescription,
-        simulation: sim.objects.system.SimulationData,
-        events_register: TimedEventsManager,
+        simulation: sim.core.Simulation,
         behaviour_controllers: Dict[
             str, sim.controllers.behaviour_controller.BaseBehaviourController
         ],
@@ -43,7 +43,7 @@ class Stopper:
         self.stopper_id = stopper_id
 
         # Stopper description data
-        self.stopper_description = simulation_description[stopper_id]
+        self.stopper_description = stopper_description
 
         # Controllers pointers
         self.behaviour_controllers = behaviour_controllers
@@ -51,7 +51,7 @@ class Stopper:
 
         # Simulation objects pointers
         self.simulation = simulation
-        self.events_register = events_register
+        self.events_manager = self.simulation.events_manager
 
         # Simulation description data
         self.simulation_description = simulation_description
@@ -97,6 +97,11 @@ class Stopper:
                     self.stopper_id
                 ]
 
+            if self.stopper_id in behaviour_controller.check_request_functions:
+                self.check_requests_functions = (
+                    behaviour_controller.check_request_functions[self.stopper_id]
+                )
+
         # Stopper composition objects
         self.input_events = events.InputEvents(self)
         self.output_events = events.OutputEvents(self)
@@ -105,30 +110,24 @@ class Stopper:
     def post_init(self):
         pass
 
-    def check_request(self, *args):
+    def check_request(self):
         if not self.states.request:
             return
 
-        for behaviour_controller in self.behaviour_controllers.values():
-            behaviour_controller.check_request(
-                self.stopper_id,
-                {
-                    "simulation": self.simulation,
-                    "events_register": self.events_register,
-                    "stopper": self,
-                },
-            )
+        for behaviour_controller in self.check_requests_functions:
+            behaviour_controller["function"](behaviour_controller["params"])
+
         for destiny in self.output_stoppers_ids:
             if (
                 self.check_destiny_available(destiny)
-                and not self.move[destiny]
-                and not self.management_stop[destiny]
+                and not self.states.move[destiny]
+                and not self.states.management_stop[destiny]
             ):
-                self.start_move(destiny)
+                self.states.start_move(destiny)
                 return
 
     def check_destiny_available(self, destiny) -> bool:
-        for relative in self.destiny_not_available_v2[destiny].values():
+        for relative in self.states.destiny_not_available_v2[destiny].values():
             if relative:
                 return False
         return True
@@ -138,7 +137,7 @@ class Stopper:
             self.return_rest_function(
                 {
                     "simulation": self.simulation,
-                    "events_register": self.events_register,
+                    "events_register": self.events_manager,
                     "stopper_id": self.stopper_id,
                 }
             )
@@ -146,4 +145,4 @@ class Stopper:
     # Results helpers functions
     def state_change(self):
         for results_controller in self.results_controllers.values():
-            results_controller.status_change(self, self.events_register.step)
+            results_controller.status_change(self, self.events_manager.step)

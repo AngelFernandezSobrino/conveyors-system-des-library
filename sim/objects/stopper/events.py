@@ -14,7 +14,7 @@ class InputEvents:
     # Tray arrival event
     def tray_arrival(self, tray: Tray):
         self.c.input_item = tray
-        self.c.tray_arrival_time = self.c.events_register.step
+        self.c.tray_arrival_time = self.c.events_manager.step
         self.c.states.go_request()
 
     # Externl event to stop tray movement from behaviour controller
@@ -52,7 +52,7 @@ class OutputEvents:
             )
 
     def available_origin(self):
-        for origin in self.input_ids:
+        for origin in self.c.input_stoppers_ids:
             self.c.simulation[origin].input_events.available(
                 self.c.stopper_id, self.c.stopper_id
             )
