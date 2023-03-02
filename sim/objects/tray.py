@@ -9,10 +9,11 @@ class Tray:
         self.tray_id = tray_id
         self.item = item
 
-    def load_item(self, item):
+    def load_item(self, item) -> bool:
         if self.item:
-            raise Exception("Tray already loaded")
+            return False
         self.item = item
+        return True
 
     def unload_item(self):
         item = self.item

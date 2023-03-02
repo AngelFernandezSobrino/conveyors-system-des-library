@@ -4,7 +4,7 @@ from typing import Dict, TypedDict, TYPE_CHECKING
 import time
 
 from sim.helpers.timed_events_manager import Event, TimedEventsManager
-from sim.objects.stopper.core import Stopper
+from sim.objects.stopper.core import Stopper, StopperId
 
 if TYPE_CHECKING:
     import sim.objects.system
@@ -36,12 +36,13 @@ class Simulation:
             "steps": 0,
         }
 
+        self.simulation = self
         self.system_description = system_description
         self.run_flag = False
 
         self.end_callback = None
 
-        self.stoppers = {}
+        self.stoppers: dict[StopperId, Stopper] = {}
         self.events_manager = TimedEventsManager()
         self.results_controllers = results_controllers
 
@@ -62,12 +63,21 @@ class Simulation:
         for behaviour_controller in behaviour_controllers.values():
             for (
                 step,
-                external_function,
+                external_function_list,
             ) in behaviour_controller.external_functions.items():
-                print('Add external function ' + str(external_function) + ' at step ' + str(step))
-                self.events_manager.add(
-                    Event(external_function, ({"simulation": self.stoppers},), {}), step
-                )
+                for external_function in external_function_list:
+                    print(
+                        "Add external function "
+                        + str(external_function_list)
+                        + " at step "
+                        + str(step)
+                    )
+                    self.events_manager.add(
+                        Event(
+                            external_function, (self,), {}
+                        ),
+                        step,
+                    )
 
     def config_steps(self, steps: int):
         self.set_config({"real_time_mode": False, "real_time_step": 0, "steps": steps})
@@ -87,9 +97,7 @@ class Simulation:
 
     def sim_runner_real_time(self):
         for results_controller in self.results_controllers.values():
-            results_controller.simulation_end(
-                self.stoppers, self.events_manager.step
-            )
+            results_controller.simulation_end(self.stoppers, self.events_manager.step)
 
         start_time = time.time()
         while self.run_flag and (
@@ -105,29 +113,23 @@ class Simulation:
                 )
             )
         for results_controller in self.results_controllers:
-            results_controller.simulation_end(
-                self.stoppers, self.events_manager.step
-            )
+            results_controller.simulation_end(self.stoppers, self.events_manager.step)
 
     def sim_runner(self):
         self.run_flag = True
         for results_controller in self.results_controllers.values():
-            results_controller.simulation_start(
-                self.stoppers, self.events_manager.step
-            )
-        print('Run flag: ' + str(self.run_flag))
-        print('Steps: ' + str(self.simulation_config["steps"]))
-        print('Events manager step: ' + str(self.events_manager.step))
+            results_controller.simulation_start(self.stoppers, self.events_manager.step)
+        print("Run flag: " + str(self.run_flag))
+        print("Steps: " + str(self.simulation_config["steps"]))
+        print("Events manager step: " + str(self.events_manager.step))
         while (
             self.run_flag and self.events_manager.step < self.simulation_config["steps"]
         ):
-            self.events_manager.run()   
+            self.events_manager.run()
             print(self.events_manager.step)
 
         for results_controller in self.results_controllers.values():
-            results_controller.simulation_end(
-                self.stoppers, self.events_manager.step
-            )
+            results_controller.simulation_end(self.stoppers, self.events_manager.step)
 
 
 if __name__ == "__main__":

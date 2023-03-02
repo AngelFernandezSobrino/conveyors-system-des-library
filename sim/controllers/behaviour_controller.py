@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Callable
-from typing import TypedDict
 
 import sim.objects.stopper.core
 
@@ -9,16 +8,21 @@ if TYPE_CHECKING:
 
 import sim.helpers.timed_events_manager
 
-class CheckRequestFunction(TypedDict):
-    function: Callable
-    params: dict
+class ParametrizedFunction():
+
+    def __init__(self, function: Callable, params: dict = {}):
+        self.function = function
+        self.params = params
+    
+    def __call__(self, context):
+        return self.function(context, self.params)
 
 
 class BaseBehaviourController:
     def __init__(self, system_description):
         self.system_description = system_description
-        self.external_functions = {}
-        self.check_request_functions: dict[str, list[CheckRequestFunction]] = {}
+        self.external_functions: dict[str, list[ParametrizedFunction]] = {}
+        self.check_request_functions: dict[str, list[ParametrizedFunction]] = {}
         self.return_rest_functions: dict[str, any] = {}
 
 

@@ -1,14 +1,19 @@
 from typing import Dict
 from enum import Enum
 
-from sim.controllers import behaviour_controller
+from sim.controllers.behaviour_controller import (
+    ParametrizedFunction,
+    BaseBehaviourController,
+    delay,
+)
 from sim.objects import Tray, Item
+from sim.objects.stopper.core import Stopper
 
 
 class ProductType(Enum):
-    product_0 = '0'
-    product_1 = '1'
-    product_2 = '2'
+    product_0 = "0"
+    product_1 = "1"
+    product_2 = "2"
 
 
 tray_index = 0
@@ -16,209 +21,187 @@ product_type_index: ProductType = ProductType.product_0
 product_id_index: Dict[ProductType, int] = {
     ProductType.product_0: 0,
     ProductType.product_1: 0,
-    ProductType.product_2: 0
+    ProductType.product_2: 0,
 }
 
 
-class BaselineBehaviourController(behaviour_controller.BaseBehaviourController):
+class BaselineBehaviourController(BaseBehaviourController):
     def __init__(self, system_description: dict):
         super().__init__(system_description)
 
-        self.external_functions = {
-            0: external_input
-        }
+        self.external_functions = {0: [ParametrizedFunction(external_input)]}
+
+        for i in range(10, 50000, 100):
+            self.external_functions[i] = [ParametrizedFunction(calculate_busyness)]
 
         self.check_request_functions = {
-            'DIR04': [
-                {
-                    'function': behaviour_controller.delay,
-                    'params': {'time': 10}
-                },
-                {
-                    'function': empty_tray,
-                    'params': {}
-                }
+            "DIR04": [
+                ParametrizedFunction(delay, {"time": 10}),
+                ParametrizedFunction(empty_tray, {}),
             ],
-            'PT06': [
-                {
-                    'function': behaviour_controller.delay,
-                    'params': {'time': 10}
-                },
-                {
-                    'function': fill_tray,
-                    'params': {}
-                }
+            "PT06": [
+                ParametrizedFunction(delay, {"time": 10}),
+                ParametrizedFunction(fill_tray_three_products, {}),
             ],
-            'PT05': [
-                {
-                    'function': behaviour_controller.delay,
-                    'params': {'time': 10}
-                },
-                {
-                    'function': bifurcation_pt05,
-                    'params': {}
-                }
+            "PT05": [
+                ParametrizedFunction(delay, {"time": 10}),
+                ParametrizedFunction(bifurcation_pt05, {}),
             ],
-            'PT09': [
-                {
-                    'function': behaviour_controller.delay,
-                    'params': {'time': 10}
-                },
-                {
-                    'function': bifurcation_pt09,
-                    'params': {}
-                }
+            "PT09": [
+                ParametrizedFunction(delay, {"time": 10}),
+                ParametrizedFunction(bifurcation_pt09, {}),
             ],
-            'PT10': [
-                {
-                    'function': behaviour_controller.delay,
-                    'params': {'time': 10}
-                },
-                {
-                    'function': bifurcation_pt10,
-                    'params': {}
-                }
+            "PT10": [
+                ParametrizedFunction(delay, {"time": 10}),
+                ParametrizedFunction(bifurcation_pt10, {}),
             ],
-            'PT16': [
-                {
-                    'function': behaviour_controller.delay,
-                    'params': {'time': 10}
-                },
-                {
-                    'function': bifurcation_pt16,
-                    'params': {}
-                }
+            "PT16": [
+                ParametrizedFunction(delay, {"time": 10}),
+                ParametrizedFunction(bifurcation_pt16, {}),
             ],
-            'DIR17': [
-                {
-                    'function': behaviour_controller.delay,
-                    'params': {'time': 10}
-                },
-                {
-                    'function': process_01,
-                    'params': {}
-                }
+            # "DIR17": [
+            #     ParametrizedFunction(delay, {"time": 10}),
+            #     ParametrizedFunction(process_01, {}),
+            # ],
+            "DIR13": [
+                ParametrizedFunction(delay, {"time": 10}),
+                ParametrizedFunction(process_01, {}),
             ],
-            'DIR13': [
-                {
-                    'function': behaviour_controller.delay,
-                    'params': {'time': 10}
-                },
-                {
-                    'function': process_02,
-                    'params': {}
-                }
-            ],
-            'DIR19': [
-                {
-                    'function': behaviour_controller.delay,
-                    'params': {'time': 10}
-                },
-                {
-                    'function': process_03,
-                    'params': {}
-                }
-            ],
+            # "DIR19": [
+            #     ParametrizedFunction(delay, {"time": 10}),
+            #     ParametrizedFunction(process_03, {}),
+            # ],
         }
 
         self.return_rest_functions = {
-            'PT01': external_input
+            # "PT01": [ParametrizedFunction(external_input, {})]
         }
-        for i in range(10, 50000, 100):
-            self.external_functions[i] = calculate_busyness
 
 
-def external_input(checkRequestData: behaviour_controller.CheckRequestData):
+def external_input(self: Stopper, params):
     global tray_index
-    if tray_index < 10:
-        print('New tray entrance and PT01, with id ' + str(tray_index))
-        checkRequestData['simulation']['PT01'].input_events.tray_arrival(Tray(tray_index, False))
+    if tray_index < 1:
+        print("New tray entrance and PT01, with id " + str(tray_index))
+        self.simulation.stoppers["PT01"].input_events.tray_arrival(
+            Tray(tray_index, False)
+        )
         tray_index += 1
 
 
-def calculate_busyness(checkRequestData: behaviour_controller.CheckRequestData):
-    checkRequestData['simulation']['PT01'].results_controllers['busyness'].calculate_busyness(checkRequestData['simulation'], checkRequestData['simulation']['PT01'].events_manager.step)
+def calculate_busyness(self: Stopper, params):
+    self.simulation.stoppers["PT01"].results_controllers["busyness"].calculate_busyness(
+        self.simulation,
+        self.events_manager.step,
+    )
 
 
-def produce(params, checkRequestData: behaviour_controller.CheckRequestData):
-    if checkRequestData['stopper'].input_object.product.state == '2':
-        checkRequestData['stopper'].input_object.product.update_state('3')
+def produce(self: Stopper, params):
+    if self.input_tray.item.state == "2":
+        self.input_tray.item.update_state("3")
 
 
-def empty_tray(params, checkRequestData: behaviour_controller.CheckRequestData):
-    if checkRequestData['stopper'].input_object.product and checkRequestData['stopper'].input_object.product.state == '1':
-        checkRequestData['stopper'].results_controllers[0].produce(checkRequestData['stopper'].input_object.product,
-                                                       checkRequestData['events_register'].step)
-        checkRequestData['stopper'].input_object.product = False
+def empty_tray(self: Stopper, params):
+    if self.input_tray.item and self.input_tray.item.state == "1":
+        self.results_controllers["production"].produce(
+            self.input_tray.item, self.events_manager.step
+        )
+        self.input_tray.item = False
 
 
-def fill_tray(params, checkRequestData: behaviour_controller.CheckRequestData):
-    if checkRequestData['stopper'].input_object.product:
+def fill_tray_one_product(self: Stopper, params):
+    global product_id_index
+    if self.input_tray.load_item(
+        Item(str(product_id_index), ProductType.product_0, "0")
+    ):
+        product_id_index += 1
+
+
+def fill_tray_three_products(self: Stopper, params):
+    if self.input_tray.item:
         return
     global product_type_index, product_id_index
 
     if product_type_index == ProductType.product_0:
-        checkRequestData['stopper'].input_object.product = Product(str(product_id_index[ProductType.product_0]),
-                                                       ProductType.product_0, '0')
+        self.input_tray.item = Item(
+            str(product_id_index[ProductType.product_0]), ProductType.product_0, "0"
+        )
         product_id_index[ProductType.product_0] += 1
         product_type_index = ProductType.product_1
     elif product_type_index == ProductType.product_1:
-        checkRequestData['stopper'].input_object.product = Product(str(product_id_index[ProductType.product_1]),
-                                                       ProductType.product_1, '0')
+        self.input_tray.item = Item(
+            str(product_id_index[ProductType.product_1]), ProductType.product_1, "0"
+        )
         product_id_index[ProductType.product_1] += 1
         product_type_index = ProductType.product_2
     elif product_type_index == ProductType.product_2:
-        checkRequestData['stopper'].input_object.product = Product(str(product_id_index[ProductType.product_2]),
-                                                       ProductType.product_2, '0')
+        self.input_tray.item = Item(
+            str(product_id_index[ProductType.product_2]), ProductType.product_2, "0"
+        )
         product_id_index[ProductType.product_2] += 1
         product_type_index = ProductType.product_0
 
 
-def process_01(params, checkRequestData: behaviour_controller.CheckRequestData):
-    if checkRequestData['stopper'].input_object.product.model == ProductType.product_0 and \
-            checkRequestData['stopper'].input_object.product.state == '0':
-        checkRequestData['stopper'].input_object.product.update_state('1')
+def process_01(self: Stopper, params):
+    if (
+        self.input_tray.item.item_type == ProductType.product_0
+        and self.input_tray.item.state == "0"
+    ):
+        self.input_tray.item.update_state("1")
 
 
-def process_02(params, checkRequestData: behaviour_controller.CheckRequestData):
-    if checkRequestData['stopper'].input_object.product.model == ProductType.product_1 and \
-            checkRequestData['stopper'].input_object.product.state == '0':
-        checkRequestData['stopper'].input_object.product.update_state('1')
+def process_02(self: Stopper, params):
+    if (
+        self.input_tray.item.item_type == ProductType.product_1
+        and self.input_tray.item.state == "0"
+    ):
+        self.input_tray.item.update_state("1")
 
 
-def process_03(params, checkRequestData: behaviour_controller.CheckRequestData):
-    if checkRequestData['stopper'].input_object.product.model == ProductType.product_2 and \
-            checkRequestData['stopper'].input_object.product.state == '0':
-        checkRequestData['stopper'].input_object.product.update_state('1')
+def process_03(self: Stopper, params):
+    if (
+        self.input_tray.item.item_type == ProductType.product_2
+        and self.input_tray.item.state == "0"
+    ):
+        self.input_tray.item.update_state("1")
 
 
-def bifurcation_pt05(params, checkRequestData: behaviour_controller.CheckRequestData):
-    if checkRequestData['stopper'].input_object.product:
-        checkRequestData['stopper'].in_update_lock({'DIR05': True, 'DIR08': False})
+def bifurcation_pt05(self: Stopper, params):
+    if self.input_tray.item:
+        self.input_events.lock(["DIR05"])
+        self.input_events.unlock(["DIR08"])
     else:
-        checkRequestData['stopper'].in_update_lock({'DIR05': False, 'DIR08': True})
+        self.input_events.lock(["DIR08"])
+        self.input_events.unlock(["DIR05"])
 
 
-def bifurcation_pt09(params, checkRequestData: behaviour_controller.CheckRequestData):
-    if checkRequestData['stopper'].input_object.product.model == ProductType.product_0 and \
-            checkRequestData['stopper'].input_object.product.state == '0':
-
-        checkRequestData['stopper'].in_update_lock({'DIR14': False, 'DIR11': True})
+def bifurcation_pt09(self: Stopper, params):
+    if (
+        self.input_tray.item.item_type == ProductType.product_0
+        and self.input_tray.item.state == "0"
+    ):
+        self.input_events.lock(["DIR14"])
+        self.input_events.unlock(["DIR11"])
     else:
-        checkRequestData['stopper'].in_update_lock({'DIR14': True, 'DIR11': False})
+        self.input_events.lock(["DIR11"])
+        self.input_events.unlock(["DIR14"])
 
 
-def bifurcation_pt10(params, checkRequestData: behaviour_controller.CheckRequestData):
-    if checkRequestData['stopper'].input_object.product.model == ProductType.product_2 and \
-            checkRequestData['stopper'].input_object.product.state == '0':
-
-        checkRequestData['stopper'].in_update_lock({'DIR13': True, 'DIR15': False})
+def bifurcation_pt10(self: Stopper, params):
+    if (
+        self.input_tray.item.item_type == ProductType.product_2
+        and self.input_tray.item.state == "0"
+    ):
+        self.input_events.lock(["DIR13"])
+        self.input_events.unlock(["DIR15"])
     else:
-        checkRequestData['stopper'].in_update_lock({'DIR13': False, 'DIR15': True})
+        self.input_events.lock(["DIR15"])
+        self.input_events.unlock(["DIR13"])
 
 
-def bifurcation_pt16(params, checkRequestData: behaviour_controller.CheckRequestData):
-    if not checkRequestData['stopper'].input_object.product or checkRequestData['stopper'].input_object.product.state == '1':
-        checkRequestData['stopper'].in_update_lock({'DIR07': False, 'PT17': True})
+def bifurcation_pt16(self: Stopper, params):
+    if not self.input_tray.item or self.input_tray.item.state == "1":
+        self.input_events.lock(["PT17"])
+        self.input_events.unlock(["DIR07"])
     else:
-        checkRequestData['stopper'].in_update_lock({'DIR07': True, 'PT17': False})
+        self.input_events.lock(["DIR07"])
+        self.input_events.unlock(["PT17"])

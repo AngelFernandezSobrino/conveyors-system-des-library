@@ -7,7 +7,7 @@ class Event:
         self.args = args
         self.kwargs = kwargs
 
-    def fire(self):
+    def __call__(self):
         return self.callable(*self.args, **self.kwargs)
 
 
@@ -37,7 +37,7 @@ class TimedEventsManager:
             return
         events = self.events_queue.pop(self.step)
         for event in events:
-            event.fire()
+            event()
 
 
 if __name__ == "__main__":

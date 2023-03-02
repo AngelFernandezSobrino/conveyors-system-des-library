@@ -80,20 +80,21 @@ class Stopper:
                 self.input_stoppers_ids += [external_stopper_id]
 
         # Stopper tray data
-        self.output_items: dict[StopperId, Union[Tray, bool]] = {
+        self.output_trays: dict[StopperId, Union[Tray, bool]] = {
             v: False for v in self.stopper_description["destiny"]
         }
-        self.input_item: Union[Tray, bool] = False
+        self.input_tray: Union[Tray, bool] = False
 
         # Request time
         self.tray_arrival_time = 0
 
         # External functions behaviour
-        self.return_rest_function = False
+        self.return_rest_functions: list[sim.controllers.behaviour_controller.ParametrizedFunction] = []
+        self.check_requests_functions: list[sim.controllers.behaviour_controller.ParametrizedFunction] = []
 
         for behaviour_controller in behaviour_controllers.values():
             if self.stopper_id in behaviour_controller.return_rest_functions:
-                self.return_rest_function = behaviour_controller.return_rest_functions[
+                self.return_rest_functions = behaviour_controller.return_rest_functions[
                     self.stopper_id
                 ]
 
@@ -115,7 +116,7 @@ class Stopper:
             return
 
         for behaviour_controller in self.check_requests_functions:
-            behaviour_controller["function"](behaviour_controller["params"])
+            behaviour_controller(self)
 
         for destiny in self.output_stoppers_ids:
             if (
@@ -133,14 +134,8 @@ class Stopper:
         return True
 
     def process_return_rest(self):
-        if self.return_rest_function:
-            self.return_rest_function(
-                {
-                    "simulation": self.simulation,
-                    "events_register": self.events_manager,
-                    "stopper_id": self.stopper_id,
-                }
-            )
+        for return_rest_function in self.return_rest_functions:
+            return_rest_function(self)
 
     # Results helpers functions
     def state_change(self):

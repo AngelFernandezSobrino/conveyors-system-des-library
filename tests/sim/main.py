@@ -43,7 +43,7 @@ sim_core = sim.core.Simulation(config_parser.config, behaviours, results)
 
 print("Running simulation...")
 print("Run steps")
-sim_core.config_steps(1000000)
+sim_core.config_steps(10000)
 start = time.time()
 sim_core.sim_runner()
 print(time.time() - start)

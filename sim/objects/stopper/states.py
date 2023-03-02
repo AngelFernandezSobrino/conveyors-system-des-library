@@ -54,8 +54,8 @@ class State:
     def start_move(self, destiny):
         self.request = False
         self.move[destiny] = True
-        self.c.output_items[destiny] = self.c.input_item
-        self.c.input_item = False
+        self.c.output_trays[destiny] = self.c.input_tray
+        self.c.input_tray = False
         self.c.events_manager.push(
             Event(self.end_move, tuple(), {"destiny": destiny}), self.c.move_steps[destiny]
         )
