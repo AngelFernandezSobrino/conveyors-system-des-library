@@ -11,7 +11,7 @@ consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
 logger.addHandler(consoleHandler)
 
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 import desym.helpers
 import desym.core
@@ -19,24 +19,24 @@ import desym.controllers.results_controller as results_controller
 import desym.controllers.behaviour_controller as behaviour_controller
 import behaviour as custom_behaviour
 
-logging.getLogger("desym").setLevel(logging.DEBUG)
+logging.getLogger("desym").setLevel(logging.INFO)
 
 config_path = os.path.dirname(os.path.abspath(__file__)) + "/config.xlsx"
 config_parser = desym.helpers.ConfigParser(config_path)
 config_parser.parse("config_parser")
 
-import wandb
-
-# wandb.init(project="i4techlab-simulation", entity="soobbz")
-
 if not config_parser.config_available:
     raise Exception("Config not available")
 
-# config = wandb.config
-# config.data = config_parser.config
+wandb_enabled = False
 
-# wandb.define_metric("results/simulation_time")
-# wandb.define_metric("results/*", step_metric="results/simulation_time")
+if wandb_enabled:
+    import wandb
+    wandb.init(project="i4techlab-simulation", entity="soobbz")
+    config = wandb.config
+    config.data = config_parser.config
+    wandb.define_metric("results/simulation_time")
+    wandb.define_metric("results/*", step_metric="results/simulation_time")
 
 behavioursDict = TypedDict(
     "behavioursType", {"baseline": behaviour_controller.BaseBehaviourController}
@@ -84,23 +84,43 @@ results: resultsDict = {
 }
 
 step_to_time = 0.25
-steps = 1000
+steps = 100000
+
+time_one = time.time()
+time_two = time.time()
+
+sim_time_max = 0
+sim_time_min = 20
+
+callback_time_max = 0
+callback_time_min = 20
+
+sim_time_list = []
+callback_time_list = []
+
+calc_mean_interval = 0
 
 
 def wandb_step_callback(core: desym.core.Simulation):
+    global time_one, time_two
+    time_one = time.time()
     if wandb_data_dict != {}:
         wandb_data_dict["results/simulation_time"] = (
             core.events_manager.step * step_to_time / 60
         )
-        wandb.log(wandb_data_dict)
+        if wandb_enabled:
+            wandb.log(wandb_data_dict)
         wandb_data_dict.clear()
 
     check_simulation_errors(core)
+    time_two = time.time()
+
+
+lines_to_delete = 0
 
 
 def check_simulation_errors(core: desym.core.Simulation):
     # Loop over all stopper objects and check if any tray is located at two places at the same time
-
     tray_locations: Dict[str, list[str]] = {}
     for stopper in core.stoppers.values():
         if stopper.input_tray:
@@ -124,10 +144,14 @@ def check_simulation_errors(core: desym.core.Simulation):
                         stopper.stopper_id + f" output {output}"
                     ]
             output += 1
+    global lines_to_delete
+    next_lines_to_delete = 2
     tray_string = ""
     for i in range(len(tray_locations)):
-        tray_string += f"Tray {i} { [stopper_id for stopper_id in tray_locations[str(i)]] } --  "
-    # logger.debug(f"S:{core.events_manager.step} - {tray_string}")
+        tray_string += (
+            f"Tray {i} { [stopper_id for stopper_id in tray_locations[str(i)]] } \n "
+        )
+        next_lines_to_delete += 1
 
     for tray_id in tray_locations:
         if len(tray_locations[tray_id]) > 1:
@@ -139,6 +163,77 @@ def check_simulation_errors(core: desym.core.Simulation):
         if tray.tray_id not in tray_locations:
             logger.error(f"Tray {tray} is not located at any stopper")
             raise Exception(f"Tray {tray} is not located at any stopper")
+
+    # Check if all trays have different items
+    tray_items: Dict[str, list[str]] = {}
+    for tray in core.trays:
+        if tray.tray_id in tray_items:
+            tray_items[tray.tray_id].append(tray.item)
+        else:
+            tray_items[tray.tray_id] = [tray.item]
+
+    for tray_id in tray_items:
+        if len(tray_items[tray_id]) > 1:
+            logger.error(f"Tray {tray_id} has items {tray_items[tray_id]}")
+            raise Exception(f"Tray {tray_id} has items {tray_items[tray_id]}")
+
+    for i in range(lines_to_delete):
+        LINE_UP = "\033[1A"
+        LINE_CLEAR = "\x1b[2K"
+        print(LINE_UP, end=LINE_CLEAR)
+
+    global sim_time_max, sim_time_min, callback_time_max, callback_time_min, calc_mean_interval
+    sim_time = (time_one - time_two) * 1000
+    callback_time = (time.time() - time_one) * 1000
+    if sim_time > sim_time_max:
+        sim_time_max = sim_time
+    if sim_time < sim_time_min:
+        sim_time_min = sim_time
+    if callback_time > callback_time_max:
+        callback_time_max = callback_time
+    if callback_time < callback_time_min:
+        callback_time_min = callback_time
+
+    if calc_mean_interval == 10:
+        sim_time_list.append(sim_time)
+        callback_time_list.append(callback_time)
+        calc_mean_interval = 0
+
+    calc_mean_interval += 1
+
+    sim_time_mean = 0
+    callback_time_mean = 0
+
+    # Calculate mean values
+    if len(sim_time_list) > 100:
+        sim_time_list.pop(0)
+        callback_time_list.pop(0)
+    if len(sim_time_list) > 0:
+        sim_time_mean = sum(sim_time_list) / len(sim_time_list)
+        callback_time_mean = sum(callback_time_list) / len(callback_time_list)
+
+
+    print(
+        f"Step:{core.events_manager.step} Sim time:"
+        + "{:4.4f}".format(sim_time)
+        + " Max: "
+        + "{:4.4f}".format(sim_time_max)
+        + " Min: "
+        + "{:4.4f}".format(sim_time_min)
+        + " Mean: "
+        + "{:4.4f}".format(sim_time_mean)
+        + " Callback time:"
+        + "{:4.4f}".format(callback_time)
+        + " Max: "
+        + "{:4.4f}".format(callback_time_max)
+        + " Min: "
+        + "{:4.4f}".format(callback_time_min)
+        + " Mean: "
+        + "{:4.4f}".format(callback_time_mean)
+        + f" \n {tray_string}"
+    )
+    time.sleep(0.01)
+    lines_to_delete = next_lines_to_delete
 
 
 sim_core = desym.core.Simulation(

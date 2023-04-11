@@ -84,7 +84,7 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
             self.output_stoppers_ids[k]: v
             for k, v in enumerate(self.stopper_description["move_behaviour"])
         }
-        self.input_stoppers_ids = []
+        self.input_stoppers_ids: list[StopperId] = []
         for external_stopper_id, stopper_info in simulation_description.items():
             if self.stopper_id in stopper_info["destiny"]:
                 self.input_stoppers_ids += [external_stopper_id]
@@ -128,7 +128,7 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
     def post_init(self):
         pass
 
-    def check_request(self):
+    def _check_request(self):
         if not self.states.request:
             return
 
@@ -136,25 +136,21 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
             behaviour_controller(self)
 
         for destiny in self.output_stoppers_ids:
-            if (
-                self.check_destiny_available(destiny)
-                and not self.states.move[destiny]
-                and not self.states.management_stop[destiny]
-            ):
-                self.states.start_move(destiny)
+            if self._check_available_destiny(destiny):
+                self.states.go_move(destiny)
                 return
 
-    def check_destiny_available(self, destiny) -> bool:
-        for relative in self.states.destiny_not_available_v2[destiny].values():
-            if relative:
-                return False
-        return True
+    def its_available(self) -> bool:
+        return self.states.available
+    
+    def _check_available_destiny(self, destiny):
+        return self.simulation.stoppers[destiny].its_available()
 
-    def process_return_rest(self):
+    def _process_return_rest(self):
         for return_rest_function in self.return_rest_functions:
             return_rest_function(self)
 
     # Results helpers functions
-    def state_change(self):
+    def _state_change(self):
         for results_controller in self.results_controllers.values():
             results_controller.status_change(self, self.events_manager.step)

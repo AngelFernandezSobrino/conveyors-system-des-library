@@ -11,7 +11,7 @@ class Item:
 
     def __str__(self):
         return "Item id: {}, State: {}, Model: {}".format(
-            self.id, self.state, self.data
+            self.id, self.state, self.item_type.name
         )
 
     def update_state(self, new_state):
