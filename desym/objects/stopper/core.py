@@ -1,16 +1,16 @@
 from __future__ import annotations
-from typing import TypedDict, TYPE_CHECKING, Union, Dict
+from typing import TypedDict, TYPE_CHECKING, Union, Dict, TypeVar, Generic
 
-from sim.objects.tray import Tray
+from desym.objects.tray import Tray
 from . import events
 from . import states
 
 if TYPE_CHECKING:
-    import sim.objects.system
+    import desym.objects.system
 
-import sim.controllers.results_controller
-import sim.controllers.behaviour_controller
-import sim.core
+import desym.controllers.results_controller
+import desym.controllers.behaviour_controller
+import desym.core
 
 StopperId = str
 
@@ -24,18 +24,28 @@ class StopperDescription(TypedDict):
     priority: int
 
 
-class Stopper:
+BehaviourControllerType = TypeVar(
+    "BehaviourControllerType",
+    bound=desym.controllers.behaviour_controller.BaseBehaviourController,
+)
+ResultsControllerType = TypeVar(
+    "ResultsControllerType",
+    bound=desym.controllers.results_controller.BaseResultsController,
+)
+
+
+class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
     def __init__(
         self,
         stopper_id: str,
         stopper_description: StopperDescription,
-        simulation_description: sim.objects.system.SystemDescription,
-        simulation: sim.core.Simulation,
+        simulation_description: desym.objects.system.SystemDescription,
+        simulation: desym.core.Simulation,
         behaviour_controllers: Dict[
-            str, sim.controllers.behaviour_controller.BaseBehaviourController
+            str, BehaviourControllerType
         ],
         results_controllers: Dict[
-            str, sim.controllers.results_controller.BaseResultsController
+            str, ResultsControllerType
         ],
         debug,
     ):
@@ -80,17 +90,21 @@ class Stopper:
                 self.input_stoppers_ids += [external_stopper_id]
 
         # Stopper tray data
-        self.output_trays: dict[StopperId, Union[Tray, bool]] = {
-            v: False for v in self.stopper_description["destiny"]
+        self.output_trays: dict[StopperId, Union[Tray, None]] = {
+            v: None for v in self.stopper_description["destiny"]
         }
-        self.input_tray: Union[Tray, bool] = False
+        self.input_tray: Union[Tray, None] = None
 
         # Request time
         self.tray_arrival_time = 0
 
         # External functions behaviour
-        self.return_rest_functions: list[sim.controllers.behaviour_controller.ParametrizedFunction] = []
-        self.check_requests_functions: list[sim.controllers.behaviour_controller.ParametrizedFunction] = []
+        self.return_rest_functions: list[
+            desym.controllers.behaviour_controller.ParametrizedFunction
+        ] = []
+        self.check_requests_functions: list[
+            desym.controllers.behaviour_controller.ParametrizedFunction
+        ] = []
 
         for behaviour_controller in behaviour_controllers.values():
             if self.stopper_id in behaviour_controller.return_rest_functions:
@@ -107,6 +121,9 @@ class Stopper:
         self.input_events = events.InputEvents(self)
         self.output_events = events.OutputEvents(self)
         self.states = states.State(self)
+
+    def __str__(self) -> str:
+        return f"Stopper {self.stopper_id}"
 
     def post_init(self):
         pass

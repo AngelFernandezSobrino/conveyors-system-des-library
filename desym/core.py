@@ -1,16 +1,25 @@
 from __future__ import annotations
-from typing import Dict, TypedDict, TYPE_CHECKING
+from typing import Callable, Dict, TypedDict, TYPE_CHECKING, TypeVar, Generic, List
 
 import time
 
-from sim.helpers.timed_events_manager import Event, TimedEventsManager
-from sim.objects.stopper.core import Stopper, StopperId
+from desym.helpers.timed_events_manager import Event, TimedEventsManager
+from desym.objects.stopper.core import Stopper, StopperId
+from desym.objects.tray import Tray
 
 if TYPE_CHECKING:
-    import sim.objects.system
+    import desym.objects.system
 
-import sim.controllers.results_controller
-import sim.controllers.behaviour_controller
+import desym.controllers.results_controller
+import desym.controllers.behaviour_controller
+
+import logging
+
+logger = logging.getLogger('desym.core')
+logFormatter = logging.Formatter(fmt='%(name)s: %(message)s')
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+logger.addHandler(consoleHandler)
 
 
 class SimulationConfig(TypedDict):
@@ -18,23 +27,28 @@ class SimulationConfig(TypedDict):
     real_time_step: float
     steps: int
 
+BehaviourControllerType = TypeVar("BehaviourControllerType", bound=desym.controllers.behaviour_controller.BaseBehaviourController)
+ResultsControllerType = TypeVar("ResultsControllerType", bound=desym.controllers.results_controller.BaseResultsController)
 
-class Simulation:
+class Simulation(Generic[BehaviourControllerType, ResultsControllerType]):
     def __init__(
         self,
-        system_description: sim.objects.system.SystemDescription,
+        system_description: desym.objects.system.SystemDescription,
         behaviour_controllers: Dict[
-            str, sim.controllers.behaviour_controller.BaseBehaviourController
+            str, BehaviourControllerType
         ],
         results_controllers: Dict[
-            str, sim.controllers.results_controller.BaseResultsController
+            str, ResultsControllerType
         ],
+        step_callback: Callable[[int], None] | None,
     ) -> None:
         self.simulation_config = {
             "real_time_mode": False,
             "real_time_step": 0,
             "steps": 0,
         }
+        
+        self.step_callback = step_callback
 
         self.simulation = self
         self.system_description = system_description
@@ -42,12 +56,14 @@ class Simulation:
 
         self.end_callback = None
 
-        self.stoppers: dict[StopperId, Stopper] = {}
+        self.stoppers: dict[StopperId, Stopper[BehaviourControllerType, ResultsControllerType]] = {}
+        self.trays: list[Tray] = []
+
         self.events_manager = TimedEventsManager()
         self.results_controllers = results_controllers
 
         for stopper_id, stopper_description in self.system_description.items():
-            self.stoppers[stopper_id] = Stopper(
+            self.stoppers[stopper_id] = Stopper[BehaviourControllerType, ResultsControllerType](
                 stopper_id,
                 stopper_description,
                 self.system_description,
@@ -66,12 +82,7 @@ class Simulation:
                 external_function_list,
             ) in behaviour_controller.external_functions.items():
                 for external_function in external_function_list:
-                    print(
-                        "Add external function "
-                        + str(external_function_list)
-                        + " at step "
-                        + str(step)
-                    )
+                    
                     self.events_manager.add(
                         Event(
                             external_function, (self,), {}
@@ -112,28 +123,29 @@ class Simulation:
                     % self.simulation_config["real_time_step"]
                 )
             )
-        for results_controller in self.results_controllers:
+        for results_controller in self.results_controllers.values():
             results_controller.simulation_end(self.stoppers, self.events_manager.step)
 
     def sim_runner(self):
         self.run_flag = True
         for results_controller in self.results_controllers.values():
             results_controller.simulation_start(self.stoppers, self.events_manager.step)
-        print("Run flag: " + str(self.run_flag))
-        print("Steps: " + str(self.simulation_config["steps"]))
-        print("Events manager step: " + str(self.events_manager.step))
+        logger.info(f'Run flag: {self.run_flag}')
+        logger.info(f'Steps: {self.simulation_config["steps"]}')
+        logger.info(f'Events manager step: {self.events_manager.step}')
         while (
             self.run_flag and self.events_manager.step < self.simulation_config["steps"]
         ):
             self.events_manager.run()
-            print(self.events_manager.step)
+            self.step_callback(self)
+            # if not (self.events_manager.step % 1000): print(f'Simulation step already processed: {self.events_manager.step}')
 
         for results_controller in self.results_controllers.values():
             results_controller.simulation_end(self.stoppers, self.events_manager.step)
 
 
 if __name__ == "__main__":
-    from sim.helpers.test_utils import system_description_example
+    from desym.helpers.test_utils import system_description_example
 
     core = Simulation(system_description_example)
     core.set_config({"real_time_mode": False, "real_time_step": 0, "steps": 10})

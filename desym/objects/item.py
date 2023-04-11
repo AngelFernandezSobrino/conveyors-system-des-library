@@ -10,7 +10,7 @@ class Item:
         self.item_type = item_type
 
     def __str__(self):
-        return "ID: {}, State: {}, Model: {}".format(
+        return "Item id: {}, State: {}, Model: {}".format(
             self.id, self.state, self.data
         )
 

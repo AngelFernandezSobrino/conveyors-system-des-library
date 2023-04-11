@@ -1,4 +1,4 @@
-from sim.objects.stopper import StopperInfo
+from desym.objects.stopper import StopperInfo
 
 system_description_example: dict[str, StopperInfo] = {
     '0': {

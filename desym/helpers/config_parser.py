@@ -7,7 +7,7 @@ import pprint
 pp = pprint.PrettyPrinter(depth=4)
 
 if TYPE_CHECKING:
-    from sim.objects.system import SystemDescription
+    from desym.objects.system import SystemDescription
 
 
 class ConfigParser:

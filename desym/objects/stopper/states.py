@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from sim.helpers.timed_events_manager import Event
+from desym.helpers.timed_events_manager import Event
 
 
 if TYPE_CHECKING:
@@ -52,10 +52,12 @@ class State:
 
 
     def start_move(self, destiny):
+        if (self.c.simulation.stoppers[destiny].check_destiny_available(self.c.stopper_id)):
+            raise Exception(f"Destiny not available in the destiny stopper {destiny} for the stopper {self.c.stopper_id}")
         self.request = False
         self.move[destiny] = True
         self.c.output_trays[destiny] = self.c.input_tray
-        self.c.input_tray = False
+        self.c.input_tray = None
         self.c.events_manager.push(
             Event(self.end_move, tuple(), {"destiny": destiny}), self.c.move_steps[destiny]
         )

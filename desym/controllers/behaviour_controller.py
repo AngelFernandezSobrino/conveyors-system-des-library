@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Callable
 
-import sim.objects.stopper.core
+import desym.objects.stopper.core
 
 if TYPE_CHECKING:
-    import sim.objects.system
+    import desym.objects.system
 
-import sim.helpers.timed_events_manager
+import desym.helpers.timed_events_manager
 
 class ParametrizedFunction():
 
@@ -26,10 +26,10 @@ class BaseBehaviourController:
         self.return_rest_functions: dict[str, any] = {}
 
 
-def delay(self: sim.objects.stopper.core.Stopper, params):
+def delay(self: desym.objects.stopper.core.Stopper, params):
     self.input_events.lock(all=True)
     self.events_manager.push(
-        sim.helpers.timed_events_manager.Event(
+        desym.helpers.timed_events_manager.Event(
             self.input_events.unlock, (), {"all": True}
         ),
         params["time"],

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from sim.objects.tray import Tray
+from desym.objects.tray import Tray
 
 if TYPE_CHECKING:
     from . import core
@@ -13,6 +13,8 @@ class InputEvents:
 
     # Tray arrival event
     def tray_arrival(self, tray: Tray):
+        if self.c.input_tray is not None:
+            raise Exception("Input tray is not empty")
         self.c.input_tray = tray
         self.c.tray_arrival_time = self.c.events_manager.step
         self.c.states.go_request()
@@ -45,8 +47,10 @@ class OutputEvents:
         self.c = core
 
     def tray_send(self, destiny):
+        if self.c.output_trays[destiny] is None:
+            raise Exception("Output tray is empty")
         output_object = self.c.output_trays[destiny]
-        self.c.output_trays[destiny] = False
+        self.c.output_trays[destiny] = None
         self.c.simulation.stoppers[destiny].input_events.tray_arrival(output_object)
 
     def not_available_origin(self):
