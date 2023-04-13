@@ -28,21 +28,32 @@ class InputEvents:
     # Event to aknowledge that a destiny is becoming available again
     def destiny_available(self, destiny_id):
         if self.c.states.request:
-            self.c._check_request()
+            self.c._check_move()
 
     # Externl event to stop tray movement from behaviour controller
     def lock(self, output_ids: list[str] = [], all: bool = False):
+        if all:
+            for output_id in self.c.output_stoppers_ids:
+                self.c.states.management_stop[output_id] = True
+            return
         for output_id in output_ids:
             self.c.states.management_stop[output_id] = True
 
     def unlock(self, output_ids: list[str] = [], all: bool = False):
         state_changed = False
-        for output_id in output_ids:
-            if self.c.states.management_stop[output_id]:
-                self.c.states.management_stop[output_id] = False
+        if all:
+            for output_id in self.c.output_stoppers_ids:
+                if self.c.states.management_stop[output_id]:
+                    self.c.states.management_stop[output_id] = False
+                    state_changed = True
+        else:
+            for output_id in output_ids:
+                if self.c.states.management_stop[output_id]:
+                    self.c.states.management_stop[output_id] = False
+                    state_changed = True
 
         if state_changed:
-            self.c._check_request()
+            self.c._check_move()
 
 
 # Output events class, used by the stopper to send events to other stoppers

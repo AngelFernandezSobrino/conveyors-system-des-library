@@ -30,7 +30,7 @@ def delay(self: desym.objects.stopper.core.Stopper, params):
     self.input_events.lock(all=True)
     self.events_manager.push(
         desym.helpers.timed_events_manager.Event(
-            self.input_events.unlock, (), {"all": True}
+            callable=self.input_events.unlock, args=(), kwargs={"all": True}
         ),
         params["time"],
     )

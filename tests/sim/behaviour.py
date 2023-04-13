@@ -20,18 +20,18 @@ logger = logging.getLogger("main.behaviour")
 
 
 class ProductType(Enum):
-    product_0 = "0"
     product_1 = "1"
     product_2 = "2"
+    product_3 = "3"
 
 
-tray_index = 0
-product_type_index: ProductType = ProductType.product_0
+tray_index = 1
+product_type_index: ProductType = ProductType.product_1
 
 product_id_index: Dict[ProductType, int] = {
-    ProductType.product_0: 0,
-    ProductType.product_1: 0,
-    ProductType.product_2: 0,
+    ProductType.product_1: 1,
+    ProductType.product_2: 1,
+    ProductType.product_3: 1,
 }
 
 
@@ -101,7 +101,7 @@ class CaseStopper(
 
 def external_input(stopper: CaseStopper, params):
     global tray_index
-    if tray_index < 100:
+    if tray_index < 20:
         # logger.debug("New tray entrance at PT01, with id " + str(tray_index))
         logger.debug(f'New tray entrance at PT01, with id {tray_index}')
         new_tray = Tray(str(tray_index), False)
@@ -132,7 +132,7 @@ def fill_tray_one_product(stopper: Stopper, params):
         f"Filling {stopper.input_tray} in {stopper} with product id {product_id_index[product_type_index]} of type {product_type_index.name}"
     )
     if stopper.input_tray.load_item(
-        Item(str(product_id_index[product_type_index]), ProductType.product_0, "0")
+        Item(str(product_id_index[product_type_index]), ProductType.product_1, "0")
     ):
         product_id_index[product_type_index] += 1
 
@@ -145,13 +145,7 @@ def fill_tray_three_products(stopper: Stopper, params):
     if stopper.input_tray.item:
         return
 
-    if product_type_index == ProductType.product_0:
-        if stopper.input_tray.load_item(
-            Item(str(product_id_index[product_type_index]), ProductType.product_0, "0")
-        ):
-            product_id_index[product_type_index] += 1
-        product_type_index = ProductType.product_1
-    elif product_type_index == ProductType.product_1:
+    if product_type_index == ProductType.product_1:
         if stopper.input_tray.load_item(
             Item(str(product_id_index[product_type_index]), ProductType.product_1, "0")
         ):
@@ -162,14 +156,20 @@ def fill_tray_three_products(stopper: Stopper, params):
             Item(str(product_id_index[product_type_index]), ProductType.product_2, "0")
         ):
             product_id_index[product_type_index] += 1
-        product_type_index = ProductType.product_0
+        product_type_index = ProductType.product_3
+    elif product_type_index == ProductType.product_3:
+        if stopper.input_tray.load_item(
+            Item(str(product_id_index[product_type_index]), ProductType.product_3, "0")
+        ):
+            product_id_index[product_type_index] += 1
+        product_type_index = ProductType.product_1
 
 
 def process_01(stopper: Stopper, params):
     if (
         stopper.input_tray
         and stopper.input_tray.item
-        and stopper.input_tray.item.item_type == ProductType.product_0
+        and stopper.input_tray.item.item_type == ProductType.product_1
         and stopper.input_tray.item.state == "0"
     ):
         logger.debug(f"Process 01: Processing {stopper.input_tray} in {stopper}")
@@ -180,7 +180,7 @@ def process_02(stopper: Stopper, params):
     if (
         stopper.input_tray
         and stopper.input_tray.item
-        and stopper.input_tray.item.item_type == ProductType.product_1
+        and stopper.input_tray.item.item_type == ProductType.product_2
         and stopper.input_tray.item.state == "0"
     ):
         logger.debug(f"Process 02: Processing {stopper.input_tray} in {stopper}")
@@ -191,7 +191,7 @@ def process_03(stopper: Stopper, params):
     if (
         stopper.input_tray
         and stopper.input_tray.item
-        and stopper.input_tray.item.item_type == ProductType.product_2
+        and stopper.input_tray.item.item_type == ProductType.product_3
         and stopper.input_tray.item.state == "0"
     ):
         logger.debug(f"Process 03: Processing {stopper.input_tray} in {stopper}")
@@ -213,7 +213,7 @@ def bifurcation_pt09(stopper: Stopper, params):
     if (
         stopper.input_tray
         and stopper.input_tray.item
-        and stopper.input_tray.item.item_type == ProductType.product_0
+        and stopper.input_tray.item.item_type == ProductType.product_1
         and stopper.input_tray.item.state == "0"
     ):
         logger.debug(f"Bifurcation PT09: Moving {stopper.input_tray} to DIR11")
@@ -229,7 +229,7 @@ def bifurcation_pt10(stopper: Stopper, params):
     if (
         stopper.input_tray
         and stopper.input_tray.item
-        and stopper.input_tray.item.item_type == ProductType.product_2
+        and stopper.input_tray.item.item_type == ProductType.product_3
         and stopper.input_tray.item.state == "0"
     ):
         logger.debug(f"Bifurcation PT10: Moving {stopper.input_tray} to DIR15")

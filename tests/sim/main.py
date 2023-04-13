@@ -13,6 +13,9 @@ logger.addHandler(consoleHandler)
 
 logger.setLevel(logging.INFO)
 
+import paho.mqtt.publish
+import paho.mqtt
+
 import desym.helpers
 import desym.core
 import desym.controllers.results_controller as results_controller
@@ -32,6 +35,7 @@ wandb_enabled = False
 
 if wandb_enabled:
     import wandb
+
     wandb.init(project="i4techlab-simulation", entity="soobbz")
     config = wandb.config
     config.data = config_parser.config
@@ -112,7 +116,7 @@ def wandb_step_callback(core: desym.core.Simulation):
             wandb.log(wandb_data_dict)
         wandb_data_dict.clear()
 
-    check_simulation_errors(core)
+    # check_simulation_errors(core)
     time_two = time.time()
 
 
@@ -147,11 +151,16 @@ def check_simulation_errors(core: desym.core.Simulation):
     global lines_to_delete
     next_lines_to_delete = 2
     tray_string = ""
-    for i in range(len(tray_locations)):
-        tray_string += (
-            f"Tray {i} { [stopper_id for stopper_id in tray_locations[str(i)]] } \n "
-        )
+
+    for stopper in core.stoppers.values():
+        tray_string += f"Stopper {stopper.stopper_id} input: {stopper.input_tray.tray_id if stopper.input_tray is not None else None } { [tray.tray_id if tray is not None else None for tray in stopper.output_trays.values()]} \n "
         next_lines_to_delete += 1
+
+    # for i in range(len(tray_locations)):
+    #     tray_string += (
+    #         f"Tray {i} { [stopper_id for stopper_id in tray_locations[str(i)]] } \n "
+    #     )
+    #     next_lines_to_delete += 1
 
     for tray_id in tray_locations:
         if len(tray_locations[tray_id]) > 1:
@@ -212,7 +221,6 @@ def check_simulation_errors(core: desym.core.Simulation):
         sim_time_mean = sum(sim_time_list) / len(sim_time_list)
         callback_time_mean = sum(callback_time_list) / len(callback_time_list)
 
-
     print(
         f"Step:{core.events_manager.step} Sim time:"
         + "{:4.4f}".format(sim_time)
@@ -232,7 +240,48 @@ def check_simulation_errors(core: desym.core.Simulation):
         + "{:4.4f}".format(callback_time_mean)
         + f" \n {tray_string}"
     )
-    time.sleep(0.01)
+
+    msg_list = [
+        ("desym/step", str(core.events_manager.step), 0, False)
+    ]
+
+    for stopper in core.stoppers.values():
+        if (stopper.input_tray is not None):
+            if (stopper.input_tray.item):
+                item_string = f' P: {stopper.input_tray.item.id} S: {stopper.input_tray.item.state}'
+            else:
+                item_string = ''
+            msg_list.append((f"desym/stopper/{stopper.stopper_id}/input", str(f'Id: {stopper.input_tray.tray_id} {item_string}'), 0, False))
+        else:
+            msg_list.append((f"desym/stopper/{stopper.stopper_id}/input", None, 0, False))
+
+        for output_tray_id in stopper.output_trays:
+            if (stopper.output_trays[output_tray_id] is not None):
+                if (stopper.output_trays[output_tray_id].item):
+                    item_string = f'P: {stopper.output_trays[output_tray_id].item.id} S: {stopper.output_trays[output_tray_id].item.state}'
+                else:
+                    item_string = ''
+                msg_list.append((f"desym/stopper/{stopper.stopper_id}/output/{output_tray_id}", str(f'Id: {stopper.output_trays[output_tray_id].tray_id} {item_string}'), 0, False))
+            else:
+                msg_list.append((f"desym/stopper/{stopper.stopper_id}/output/{output_tray_id}", None, 0, False))
+
+
+
+    paho.mqtt.publish.multiple(
+        msg_list,
+        hostname="localhost",
+        port=1883,
+        client_id="",
+        keepalive=60,
+        will=None,
+        auth=None,
+        tls=None,
+        protocol=paho.mqtt.client.MQTTv311,
+        transport="tcp",
+
+    )
+
+    time.sleep(0.03)
     lines_to_delete = next_lines_to_delete
 
 
@@ -246,15 +295,15 @@ sim_core.sim_runner()
 logger.info(f"Simulation spent time: {time.time() - start}")
 logger.info(f"Simulation duration: {steps*step_to_time / 3600} hours")
 logger.debug(
-    f'Production results {custom_behaviour.ProductType.product_0.name}: {results["production"].counters_timeseries[custom_behaviour.ProductType.product_0]}'
+    f'Production results {custom_behaviour.ProductType.product_1.name}: {results["production"].counters_timeseries[custom_behaviour.ProductType.product_1]}'
 )
 logger.info("Production results:")
-logger.info(
-    f'Product {custom_behaviour.ProductType.product_0.name}: {results["production"].counters[custom_behaviour.ProductType.product_0]}'
-)
 logger.info(
     f'Product {custom_behaviour.ProductType.product_1.name}: {results["production"].counters[custom_behaviour.ProductType.product_1]}'
 )
 logger.info(
     f'Product {custom_behaviour.ProductType.product_2.name}: {results["production"].counters[custom_behaviour.ProductType.product_2]}'
+)
+logger.info(
+    f'Product {custom_behaviour.ProductType.product_3.name}: {results["production"].counters[custom_behaviour.ProductType.product_3]}'
 )

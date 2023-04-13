@@ -134,9 +134,14 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
 
         for behaviour_controller in self.check_requests_functions:
             behaviour_controller(self)
+        
+        self._check_move()
 
+    def _check_move(self):
+        if not self.states.request:
+            return
         for destiny in self.output_stoppers_ids:
-            if self._check_available_destiny(destiny):
+            if not self.states.management_stop[destiny] and self._check_available_destiny(destiny):
                 self.states.go_move(destiny)
                 return
 
