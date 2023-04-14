@@ -116,7 +116,7 @@ def wandb_step_callback(core: desym.core.Simulation):
             wandb.log(wandb_data_dict)
         wandb_data_dict.clear()
 
-    # check_simulation_errors(core)
+    check_simulation_errors(core)
     time_two = time.time()
 
 
@@ -186,11 +186,6 @@ def check_simulation_errors(core: desym.core.Simulation):
             logger.error(f"Tray {tray_id} has items {tray_items[tray_id]}")
             raise Exception(f"Tray {tray_id} has items {tray_items[tray_id]}")
 
-    for i in range(lines_to_delete):
-        LINE_UP = "\033[1A"
-        LINE_CLEAR = "\x1b[2K"
-        print(LINE_UP, end=LINE_CLEAR)
-
     global sim_time_max, sim_time_min, callback_time_max, callback_time_min, calc_mean_interval
     sim_time = (time_one - time_two) * 1000
     callback_time = (time.time() - time_one) * 1000
@@ -220,6 +215,10 @@ def check_simulation_errors(core: desym.core.Simulation):
     if len(sim_time_list) > 0:
         sim_time_mean = sum(sim_time_list) / len(sim_time_list)
         callback_time_mean = sum(callback_time_list) / len(callback_time_list)
+    for i in range(lines_to_delete):
+        LINE_UP = "\033[1A"
+        LINE_CLEAR = "\x1b[2K"
+        print(LINE_UP, end=LINE_CLEAR)
 
     print(
         f"Step:{core.events_manager.step} Sim time:"
@@ -241,31 +240,52 @@ def check_simulation_errors(core: desym.core.Simulation):
         + f" \n {tray_string}"
     )
 
-    msg_list = [
-        ("desym/step", str(core.events_manager.step), 0, False)
-    ]
+    msg_list = [("desym/step", str(core.events_manager.step), 0, False)]
 
     for stopper in core.stoppers.values():
-        if (stopper.input_tray is not None):
-            if (stopper.input_tray.item):
-                item_string = f' P: {stopper.input_tray.item.id} S: {stopper.input_tray.item.state}'
+        if stopper.input_tray is not None:
+            if stopper.input_tray.item:
+                item_string = f" T: {stopper.input_tray.item.item_type.value} S: {stopper.input_tray.item.state}"
             else:
-                item_string = ''
-            msg_list.append((f"desym/stopper/{stopper.stopper_id}/input", str(f'Id: {stopper.input_tray.tray_id} {item_string}'), 0, False))
+                item_string = ""
+            msg_list.append(
+                (
+                    f"desym/stopper/{stopper.stopper_id}/input",
+                    str(f"Id: {stopper.input_tray.tray_id} {item_string}"),
+                    0,
+                    False,
+                )
+            )
         else:
-            msg_list.append((f"desym/stopper/{stopper.stopper_id}/input", None, 0, False))
+            msg_list.append(
+                (f"desym/stopper/{stopper.stopper_id}/input", None, 0, False)
+            )
 
         for output_tray_id in stopper.output_trays:
-            if (stopper.output_trays[output_tray_id] is not None):
-                if (stopper.output_trays[output_tray_id].item):
-                    item_string = f'P: {stopper.output_trays[output_tray_id].item.id} S: {stopper.output_trays[output_tray_id].item.state}'
+            if stopper.output_trays[output_tray_id] is not None:
+                if stopper.output_trays[output_tray_id].item:
+                    item_string = f"T: {stopper.output_trays[output_tray_id].item.item_type.value} S: {stopper.output_trays[output_tray_id].item.state}"
                 else:
-                    item_string = ''
-                msg_list.append((f"desym/stopper/{stopper.stopper_id}/output/{output_tray_id}", str(f'Id: {stopper.output_trays[output_tray_id].tray_id} {item_string}'), 0, False))
+                    item_string = ""
+                msg_list.append(
+                    (
+                        f"desym/stopper/{stopper.stopper_id}/output/{output_tray_id}",
+                        str(
+                            f"Id: {stopper.output_trays[output_tray_id].tray_id} {item_string}"
+                        ),
+                        0,
+                        False,
+                    )
+                )
             else:
-                msg_list.append((f"desym/stopper/{stopper.stopper_id}/output/{output_tray_id}", None, 0, False))
-
-
+                msg_list.append(
+                    (
+                        f"desym/stopper/{stopper.stopper_id}/output/{output_tray_id}",
+                        None,
+                        0,
+                        False,
+                    )
+                )
 
     paho.mqtt.publish.multiple(
         msg_list,
@@ -278,10 +298,9 @@ def check_simulation_errors(core: desym.core.Simulation):
         tls=None,
         protocol=paho.mqtt.client.MQTTv311,
         transport="tcp",
-
     )
 
-    time.sleep(0.03)
+    time.sleep(0.02)
     lines_to_delete = next_lines_to_delete
 
 
