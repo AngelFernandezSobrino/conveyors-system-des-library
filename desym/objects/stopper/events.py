@@ -80,7 +80,7 @@ class OutputEvents:
             if self.c.stopper_description["priority"] == 0
             else reversed(self.c.simulation_description["priority"])
         )
-        for origin in self.c.input_stoppers_ids:
+        for origin in input_ids_array:
             self.c.simulation.stoppers[origin].input_events.destiny_available(
                 self.c.stopper_id
             )
