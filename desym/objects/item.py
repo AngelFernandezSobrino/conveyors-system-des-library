@@ -1,9 +1,10 @@
-from typing import TypeVar
+from typing import Generic, TypeVar
 
 ItemData = TypeVar("ItemData")
+ItemType = TypeVar("ItemType")
 
-class Item:
-    def __init__(self, id: str, item_type: any, data: ItemData, state: str = "0"):
+class Item(Generic[ItemData, ItemType]):
+    def __init__(self, id: str, item_type: ItemType, data: ItemData, state: str = "0"):
         self.id = id
         self.state = state
         self.data = data
