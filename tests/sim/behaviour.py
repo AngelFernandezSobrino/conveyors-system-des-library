@@ -58,19 +58,15 @@ class BaselineBehaviourController(BaseBehaviourController):
                 ParametrizedFunction(fill_tray_three_products, {}),
             ],
             "PT05": [
-                ParametrizedFunction(delay, {"time": 10}),
                 ParametrizedFunction(bifurcation_pt05, {}),
             ],
             "PT09": [
-                ParametrizedFunction(delay, {"time": 10}),
                 ParametrizedFunction(bifurcation_pt09, {}),
             ],
             "PT10": [
-                ParametrizedFunction(delay, {"time": 10}),
                 ParametrizedFunction(bifurcation_pt10, {}),
             ],
             "PT16": [
-                ParametrizedFunction(delay, {"time": 10}),
                 ParametrizedFunction(bifurcation_pt16, {}),
             ],
             "DIR17": [
@@ -101,7 +97,7 @@ class CaseStopper(
 
 def external_input(stopper: CaseStopper, params):
     global tray_index
-    if tray_index < 20:
+    if tray_index < 25:
         # logger.debug("New tray entrance at PT01, with id " + str(tray_index))
         logger.debug(f'New tray entrance at PT01, with id {tray_index}')
         new_tray = Tray(str(tray_index), False)
@@ -250,3 +246,4 @@ def bifurcation_pt16(stopper: Stopper, params):
         logger.debug(f"Bifurcation PT16: Moving {stopper.input_tray} to DIR07")
         stopper.input_events.lock(["DIR07"])
         stopper.input_events.unlock(["PT17"])
+
