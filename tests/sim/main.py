@@ -10,7 +10,6 @@ logFormatter = logging.Formatter(fmt="%(name)s: %(message)s")
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
 logger.addHandler(consoleHandler)
-
 logger.setLevel(logging.INFO)
 
 import paho.mqtt.publish
@@ -106,8 +105,6 @@ calc_mean_interval = 0
 
 
 def wandb_step_callback(core: desym.core.Simulation):
-    global time_one, time_two
-    time_one = time.time()
     if wandb_data_dict != {}:
         wandb_data_dict["results/simulation_time"] = (
             core.events_manager.step * step_to_time / 60
@@ -115,9 +112,6 @@ def wandb_step_callback(core: desym.core.Simulation):
         if wandb_enabled:
             wandb.log(wandb_data_dict)
         wandb_data_dict.clear()
-
-    check_simulation_errors(core)
-    time_two = time.time()
 
 
 lines_to_delete = 0
@@ -148,13 +142,6 @@ def check_simulation_errors(core: desym.core.Simulation):
                         stopper.stopper_id + f" output {output}"
                     ]
             output += 1
-    global lines_to_delete
-    next_lines_to_delete = 2
-    tray_string = ""
-
-    for stopper in core.stoppers.values():
-        tray_string += f"Stopper {stopper.stopper_id} input: {stopper.input_tray.tray_id if stopper.input_tray is not None else None } { [tray.tray_id if tray is not None else None for tray in stopper.output_trays.values()]} \n "
-        next_lines_to_delete += 1
 
     # for i in range(len(tray_locations)):
     #     tray_string += (
@@ -186,6 +173,14 @@ def check_simulation_errors(core: desym.core.Simulation):
             logger.error(f"Tray {tray_id} has items {tray_items[tray_id]}")
             raise Exception(f"Tray {tray_id} has items {tray_items[tray_id]}")
 
+
+def print_simulation_data(core: desym.core.Simulation):
+    global lines_to_delete
+    next_lines_to_delete = 2
+    tray_string = ""
+    for stopper in core.stoppers.values():
+        tray_string += f"Stopper {stopper.stopper_id} input: {stopper.input_tray.tray_id if stopper.input_tray is not None else None } { [tray.tray_id if tray is not None else None for tray in stopper.output_trays.values()]} \n "
+        next_lines_to_delete += 1
     global sim_time_max, sim_time_min, callback_time_max, callback_time_min, calc_mean_interval
     sim_time = (time_one - time_two) * 1000
     callback_time = (time.time() - time_one) * 1000
@@ -219,7 +214,7 @@ def check_simulation_errors(core: desym.core.Simulation):
         LINE_UP = "\033[1A"
         LINE_CLEAR = "\x1b[2K"
         print(LINE_UP, end=LINE_CLEAR)
-
+    lines_to_delete = next_lines_to_delete
     print(
         f"Step:{core.events_manager.step} Sim time:"
         + "{:4.4f}".format(sim_time)
@@ -240,6 +235,8 @@ def check_simulation_errors(core: desym.core.Simulation):
         + f" \n {tray_string}"
     )
 
+
+def send_data_to_mqtt(core: desym.core.Simulation):
     msg_list = [("desym/step", str(core.events_manager.step), 0, False)]
 
     for stopper in core.stoppers.values():
@@ -300,8 +297,16 @@ def check_simulation_errors(core: desym.core.Simulation):
         transport="tcp",
     )
 
+
+def step_callback(core: desym.core.Simulation):
+    global time_one, time_two
+    time_one = time.time()
+    wandb_step_callback(core)
+    check_simulation_errors(core)
+    print_simulation_data(core)
+    send_data_to_mqtt(core)
+    time_two = time.time()
     time.sleep(0.02)
-    lines_to_delete = next_lines_to_delete
 
 
 sim_core = desym.core.Simulation(

@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "sim"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "3.11.x"
 openpyxl = "^3.1.0"
 wandb = "^0.13.10"
 paho-mqtt = "^1.6.1"
