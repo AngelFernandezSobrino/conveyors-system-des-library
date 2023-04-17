@@ -72,6 +72,7 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
         # Stopper behaviour data
         self.default_stopped = self.stopper_description["default_locked"]
         self.output_stoppers_ids = self.stopper_description["destiny"]
+        self.output_stoppers: list[Stopper] = []
         self.move_steps = {
             self.output_stoppers_ids[k]: v
             for k, v in enumerate(self.stopper_description["steps"])
@@ -126,7 +127,11 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
         return f"Stopper {self.stopper_id}"
 
     def post_init(self):
-        pass
+        for output_stopper_id in self.output_stoppers_ids:
+            if not len(self.output_stoppers):
+                self.output_stoppers = [self.simulation.stoppers[output_stopper_id]]
+            else:
+                self.output_stoppers += [self.simulation.stoppers[output_stopper_id]]
 
     def _check_request(self):
         if not self.states.request:
