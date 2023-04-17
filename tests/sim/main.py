@@ -1,4 +1,5 @@
 import pprint
+import sys
 import time
 import os
 from typing import Dict, TypedDict
@@ -17,6 +18,7 @@ import paho.mqtt
 
 import desym.helpers
 import desym.core
+import desym.objects.stopper.core
 import desym.controllers.results_controller as results_controller
 import desym.controllers.behaviour_controller as behaviour_controller
 import behaviour as custom_behaviour
@@ -309,9 +311,90 @@ def step_callback(core: desym.core.Simulation):
     time.sleep(0.02)
 
 
+# Function to activate stopper locks to avoid deadlocks
+# It checks the population of the different cycles present in the graph representation of the simulation
+# If the population of a cycle is equal to the number of stoppers in the cycle less one, it locks all the stoppers that enter the cycle
+# If the population of a cycle is les than the number of stoppers in the cycle less one, it unlocks all the stoppers that enter the cycle
+def calculate_cycles_saturation(core: desym.core.Simulation):
+    pass
+
+
+class cycles:
+    def __init__(
+        self,
+        stoppers: dict[
+            desym.objects.stopper.core.StopperId, desym.objects.stopper.core.Stopper
+        ],
+    ):
+        # Dictionary with the output stoppers of each stopper that colide with a foreign cycle
+        self.cycle_cross_outputs: dict[
+            desym.objects.stopper.core.StopperId,
+            list[desym.objects.stopper.core.StopperId],
+        ] = {}
+
+        self.stoppers = stoppers
+        self.visited: dict[desym.objects.stopper.core.StopperId, bool] = {}
+        self.stack: list[desym.objects.stopper.core.StopperId] = []
+        self.cycles: list[list[desym.objects.stopper.core.Stopper]] = []
+        self.path: list[desym.objects.stopper.core.Stopper] = []
+
+        self.find_cycles()
+        self.calculate_consideration_list()
+
+    def find_cycles(self):
+        for stopper in self.stoppers.values():
+            self.visited[stopper.stopper_id] = False
+
+        self.dfs(self.stoppers["PT01"])
+
+        return cycles
+
+    def dfs(self, stopper: desym.objects.stopper.core.Stopper):
+        self.visited[stopper.stopper_id] = True
+        self.path.append(stopper)
+
+        for output_stopper in stopper.output_stoppers:
+            if output_stopper in self.path:
+                cycle_start = self.path.index(output_stopper)
+                self.cycles.append(self.path[cycle_start:])
+            else:
+                if not self.visited[output_stopper.stopper_id]:
+                    self.dfs(output_stopper)
+            # No else clause is needed since we don't need to do anything if we have already visited the node.
+
+        self.path.pop()
+        self.visited[stopper.stopper_id] = False
+
+    # Calculate the consideration list. It has, for each stopper of the simulation, the output stopper ids that are part of a cycle but not the stopper itself
+    def calculate_consideration_list(self):
+        for stopper in self.stoppers.values():
+            for output_stopper in stopper.output_stoppers:
+                for cycle in self.cycles:
+                    if stopper in cycle and output_stopper not in cycle:
+                        if stopper.stopper_id not in self.cycle_cross_outputs:
+                            self.cycle_cross_outputs[stopper.stopper_id] = [
+                                output_stopper.stopper_id
+                            ]
+                        else:
+                            if (
+                                not output_stopper.stopper_id
+                                in self.cycle_cross_outputs[stopper.stopper_id]
+                            ):
+                                self.cycle_cross_outputs[stopper.stopper_id].append(
+                                    output_stopper.stopper_id
+                                )
+
+
 sim_core = desym.core.Simulation(
     config_parser.config, behaviours, results, wandb_step_callback
 )
+
+simulation_cycles = cycles(sim_core.stoppers)
+
+pprint.pprint(simulation_cycles.cycle_cross_outputs)
+
+sys.exit()
+
 
 sim_core.config_steps(steps)
 start = time.time()
