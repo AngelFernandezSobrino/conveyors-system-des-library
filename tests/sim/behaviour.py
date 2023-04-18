@@ -99,27 +99,35 @@ def external_input(stopper: CaseStopper, params):
     global tray_index
     if tray_index < 25:
         # logger.debug("New tray entrance at PT01, with id " + str(tray_index))
-        logger.debug(f'New tray entrance at PT01, with id {tray_index}')
-        new_tray = Tray(str(tray_index), False)
+        logger.debug(f"New tray entrance at PT01, with id {tray_index}")
+        new_tray = Tray(str(tray_index), None)
         tray_index += 1
         stopper.simulation.trays.append(new_tray)
         stopper.simulation.stoppers["PT01"].input_events.tray_arrival(new_tray)
 
 
 def calculate_busyness(stopper: CaseStopper, params):
-    stopper.results_controllers["busyness"].calculate_busyness(
-        stopper.simulation,
-        stopper.events_manager.step,
-    )
+    if isinstance(stopper.results_controllers["busyness"], TimesResultsController):
+        stopper.results_controllers["busyness"].calculate_busyness(
+            stopper.simulation,
+            stopper.events_manager.step,
+        )
 
 
 def empty_tray(stopper: Stopper, params):
+    if not stopper.input_tray:
+        return
+    if not stopper.input_tray.item:
+        return
+    if not stopper.input_tray.item.state:
+        return
+    
     if stopper.input_tray.item and stopper.input_tray.item.state == "1":
         logger.debug(f"Emptying {stopper.input_tray} in {stopper}")
         stopper.results_controllers["production"].increment(
             stopper.input_tray.item.item_type, stopper.events_manager.step
         )
-        stopper.input_tray.item = False
+        stopper.input_tray.item = None
 
 
 def fill_tray_one_product(stopper: Stopper, params):
@@ -127,6 +135,9 @@ def fill_tray_one_product(stopper: Stopper, params):
     logger.debug(
         f"Filling {stopper.input_tray} in {stopper} with product id {product_id_index[product_type_index]} of type {product_type_index.name}"
     )
+    if not stopper.input_tray:
+        return
+    
     if stopper.input_tray.load_item(
         Item(str(product_id_index[product_type_index]), ProductType.product_1, "0")
     ):
@@ -138,6 +149,8 @@ def fill_tray_three_products(stopper: Stopper, params):
     logger.debug(
         f"Filling {stopper.input_tray} in {stopper} with product id {product_id_index[product_type_index]} of type {product_type_index.name}"
     )
+    if not stopper.input_tray:
+        return
     if stopper.input_tray.item:
         return
 
@@ -162,10 +175,11 @@ def fill_tray_three_products(stopper: Stopper, params):
 
 
 def process_01(stopper: Stopper, params):
+    if not (stopper.input_tray and stopper.input_tray.item):
+        return
+
     if (
-        stopper.input_tray
-        and stopper.input_tray.item
-        and stopper.input_tray.item.item_type == ProductType.product_1
+        stopper.input_tray.item.item_type == ProductType.product_1
         and stopper.input_tray.item.state == "0"
     ):
         logger.debug(f"Process 01: Processing {stopper.input_tray} in {stopper}")
@@ -195,6 +209,9 @@ def process_03(stopper: Stopper, params):
 
 
 def bifurcation_pt05(stopper: Stopper, params):
+    if not stopper.input_tray:
+        return
+    
     if stopper.input_tray.item:
         logger.debug(f"Bifurcation PT05: Moving {stopper.input_tray} to DIR08")
         stopper.input_events.lock(["DIR05"])
@@ -238,6 +255,9 @@ def bifurcation_pt10(stopper: Stopper, params):
 
 
 def bifurcation_pt16(stopper: Stopper, params):
+    if not stopper.input_tray:
+        return
+    
     if not stopper.input_tray.item or stopper.input_tray.item.state == "1":
         logger.debug(f"Bifurcation PT16: Moving {stopper.input_tray} to DIR07")
         stopper.input_events.lock(["PT17"])
@@ -246,4 +266,3 @@ def bifurcation_pt16(stopper: Stopper, params):
         logger.debug(f"Bifurcation PT16: Moving {stopper.input_tray} to DIR07")
         stopper.input_events.lock(["DIR07"])
         stopper.input_events.unlock(["PT17"])
-
