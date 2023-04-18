@@ -1,10 +1,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+
 from desym.objects.tray import Tray
 
 if TYPE_CHECKING:
     from . import core
+    from desym.objects.stopper.core import StopperId
 
 # This classes implement the events connections of the stoppers to other stoppers and to the behaviour controller
 
@@ -33,7 +35,7 @@ class InputEvents:
     # Externl event to stop tray movement from behaviour controller
     def lock(self, output_ids: list[str] = [], all: bool = False):
         if all:
-            for output_id in self.c.output_stoppers_ids:
+            for output_id in self.c.behaviorInfo.output_stoppers_ids:
                 self.c.states.management_stop[output_id] = True
             return
         for output_id in output_ids:
@@ -42,7 +44,7 @@ class InputEvents:
     def unlock(self, output_ids: list[str] = [], all: bool = False):
         state_changed = False
         if all:
-            for output_id in self.c.output_stoppers_ids:
+            for output_id in self.c.behaviorInfo.output_stoppers_ids:
                 if self.c.states.management_stop[output_id]:
                     self.c.states.management_stop[output_id] = False
                     state_changed = True
@@ -66,19 +68,20 @@ class OutputEvents:
         self.c.simulation.stoppers[destiny].input_events.sending_tray(self.c.stopper_id)
 
     # Used to send a tray to a destiny stopper
-    def tray_send(self, destiny):
-        if self.c.output_trays[destiny] is None:
-            raise Exception("Output tray is empty")
+    def tray_send(self, destiny: StopperId):
         output_object = self.c.output_trays[destiny]
+        if output_object is None:
+            raise Exception("Output tray is empty")
+
         self.c.output_trays[destiny] = None
         self.c.simulation.stoppers[destiny].input_events.tray_arrival(output_object)
 
     # Used to propagate that the destiny is again available
     def available_origins(self):
         input_ids_array = (
-            self.c.input_stoppers_ids
+            self.c.behaviorInfo.input_stoppers_ids
             if self.c.stopper_description["priority"] == 0
-            else reversed(self.c.simulation_description["priority"])
+            else reversed(self.c.behaviorInfo.input_stoppers_ids)
         )
         for origin in input_ids_array:
             self.c.simulation.stoppers[origin].input_events.destiny_available(

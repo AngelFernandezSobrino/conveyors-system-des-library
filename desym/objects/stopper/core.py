@@ -1,4 +1,5 @@
 from __future__ import annotations
+import dataclasses
 from typing import TypedDict, TYPE_CHECKING, Union, Dict, TypeVar, Generic
 
 from desym.objects.tray import Tray
@@ -41,54 +42,28 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
         stopper_description: StopperDescription,
         simulation_description: desym.objects.system.SystemDescription,
         simulation: desym.core.Simulation,
-        behaviour_controllers: Dict[
-            str, BehaviourControllerType
-        ],
-        results_controllers: Dict[
-            str, ResultsControllerType
-        ],
+        behaviour_controllers: Dict[str, BehaviourControllerType],
+        results_controllers: Dict[str, ResultsControllerType],
         debug,
     ):
-        # Id of the stopper
         self.stopper_id = stopper_id
-
-        # Stopper description data
         self.stopper_description = stopper_description
-
-        # Controllers pointers
         self.behaviour_controllers = behaviour_controllers
         self.results_controllers = results_controllers
+        self.simulation_description = simulation_description
 
-        # Simulation objects pointers
+        # Global pointers
         self.simulation = simulation
         self.events_manager = self.simulation.events_manager
 
-        # Simulation description data
-        self.simulation_description = simulation_description
+        self.behaviorInfo = BehaviorInfo(
+            stopper_id,
+            stopper_description,
+            simulation_description,
+        )
 
-        # Debug mode
-        self.debug = debug
-
-        # Stopper behaviour data
-        self.default_stopped = self.stopper_description["default_locked"]
-        self.output_stoppers_ids = self.stopper_description["destiny"]
         self.output_stoppers: list[Stopper] = []
-        self.move_steps = {
-            self.output_stoppers_ids[k]: v
-            for k, v in enumerate(self.stopper_description["steps"])
-        }
-        self.return_available_steps = {
-            self.output_stoppers_ids[k]: v
-            for k, v in enumerate(self.stopper_description["rest_steps"])
-        }
-        self.move_behaviour = {
-            self.output_stoppers_ids[k]: v
-            for k, v in enumerate(self.stopper_description["move_behaviour"])
-        }
-        self.input_stoppers_ids: list[StopperId] = []
-        for external_stopper_id, stopper_info in simulation_description.items():
-            if self.stopper_id in stopper_info["destiny"]:
-                self.input_stoppers_ids += [external_stopper_id]
+        self.input_stoppers: list[Stopper] = []
 
         # Stopper tray data
         self.output_trays: dict[StopperId, Union[Tray, None]] = {
@@ -127,11 +102,17 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
         return f"Stopper {self.stopper_id}"
 
     def post_init(self):
-        for output_stopper_id in self.output_stoppers_ids:
+        for output_stopper_id in self.behaviorInfo.output_stoppers_ids:
             if not len(self.output_stoppers):
                 self.output_stoppers = [self.simulation.stoppers[output_stopper_id]]
             else:
                 self.output_stoppers += [self.simulation.stoppers[output_stopper_id]]
+
+        for input_stopper_id in self.behaviorInfo.input_stoppers_ids:
+            if not len(self.input_stoppers):
+                self.input_stoppers = [self.simulation.stoppers[input_stopper_id]]
+            else:
+                self.input_stoppers += [self.simulation.stoppers[input_stopper_id]]
 
     def _check_request(self):
         if not self.states.request:
@@ -139,20 +120,22 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
 
         for behaviour_controller in self.check_requests_functions:
             behaviour_controller(self)
-        
+
         self._check_move()
 
     def _check_move(self):
         if not self.states.request:
             return
-        for destiny in self.output_stoppers_ids:
-            if not self.states.management_stop[destiny] and self._check_available_destiny(destiny):
+        for destiny in self.behaviorInfo.output_stoppers_ids:
+            if not self.states.management_stop[
+                destiny
+            ] and self._check_available_destiny(destiny):
                 self.states.go_move(destiny)
                 return
 
     def its_available(self) -> bool:
         return self.states.available
-    
+
     def _check_available_destiny(self, destiny):
         return self.simulation.stoppers[destiny].its_available()
 
@@ -164,3 +147,25 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
     def _state_change(self):
         for results_controller in self.results_controllers.values():
             results_controller.status_change(self, self.events_manager.step)
+
+
+class BehaviorInfo:
+    def __init__(self, stopper_id, stopper_description, simulation_description):
+        self.default_stopped = stopper_description["default_locked"]
+        self.output_stoppers_ids = stopper_description["destiny"]
+        self.move_steps = {
+            self.output_stoppers_ids[k]: v
+            for k, v in enumerate(stopper_description["steps"])
+        }
+        self.return_available_steps = {
+            self.output_stoppers_ids[k]: v
+            for k, v in enumerate(stopper_description["rest_steps"])
+        }
+        self.move_behaviour = {
+            self.output_stoppers_ids[k]: v
+            for k, v in enumerate(stopper_description["move_behaviour"])
+        }
+        self.input_stoppers_ids: list[StopperId] = []
+        for external_stopper_id, stopper_info in simulation_description.items():
+            if stopper_id in stopper_info["destiny"]:
+                self.input_stoppers_ids += [external_stopper_id]
