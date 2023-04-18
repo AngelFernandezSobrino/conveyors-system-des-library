@@ -5,7 +5,7 @@ from desym.objects import Item
 
 class Tray:
 
-    def __init__(self, tray_id: str, item: Union[Item, bool] = False):
+    def __init__(self, tray_id: str, item: Union[Item, None] = None):
         self.tray_id = tray_id
         self.item = item
 
@@ -20,5 +20,5 @@ class Tray:
 
     def unload_item(self):
         item = self.item
-        self.item = False
+        self.item = None
         return item
