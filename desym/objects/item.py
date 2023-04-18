@@ -12,7 +12,7 @@ class Item(Generic[ItemData, ItemType]):
 
     def __str__(self):
         return "Item id: {}, State: {}, Model: {}".format(
-            self.id, self.state, self.item_type.name
+            self.id, self.state, str(self.item_type)
         )
 
     def update_state(self, new_state):

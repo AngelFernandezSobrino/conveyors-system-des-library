@@ -40,9 +40,9 @@ class Simulation(Generic[BehaviourControllerType, ResultsControllerType]):
         results_controllers: Dict[
             str, ResultsControllerType
         ],
-        step_callback: Callable[[int], None] | None,
+        step_callback: Callable[[Simulation], None] | None,
     ) -> None:
-        self.simulation_config = {
+        self.simulation_config: SimulationConfig = {
             "real_time_mode": False,
             "real_time_step": 0,
             "steps": 0,
@@ -137,16 +137,9 @@ class Simulation(Generic[BehaviourControllerType, ResultsControllerType]):
             self.run_flag and self.events_manager.step < self.simulation_config["steps"]
         ):
             self.events_manager.run()
-            self.step_callback(self)
+            if self.step_callback:
+                self.step_callback(self)
             # if not (self.events_manager.step % 1000): print(f'Simulation step already processed: {self.events_manager.step}')
 
         for results_controller in self.results_controllers.values():
             results_controller.simulation_end(self.stoppers, self.events_manager.step)
-
-
-if __name__ == "__main__":
-    from desym.helpers.test_utils import system_description_example
-
-    core = Simulation(system_description_example)
-    core.set_config({"real_time_mode": False, "real_time_step": 0, "steps": 10})
-    core.sim_runner()

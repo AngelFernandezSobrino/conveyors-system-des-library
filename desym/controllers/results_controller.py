@@ -5,10 +5,12 @@ from enum import Enum
 from copy import deepcopy
 
 
+
 if TYPE_CHECKING:
     from desym.core import Simulation
     from desym.objects import Item, Stopper
     import desym.objects.system
+    from desym.objects.stopper.core import StopperId
 
 
 class StopperTimeResults(TypedDict):
@@ -86,7 +88,7 @@ class TimesResultsController(BaseResultsController):
 
         self.time_vector: List[int] = []
         self.times: Dict[str, StopperTimeResults] = {}
-        self.previous_stoppers: Dict[str, PreviousData] = {}
+        self.previous_stoppers: Dict[StopperId, PreviousData] = {}
         self.busyness: List[list] = [[0, 0]]
         self.system_description = system_description
         self.stopper_history: Dict[str, Dict[str, List[list]]] = {}
@@ -96,13 +98,14 @@ class TimesResultsController(BaseResultsController):
             self.times[stopper_id]["move"] = {
                 v: 0 for v in stopper_description["destiny"]
             }
-            self.previous_stoppers[stopper_id] = {}
-            self.previous_stoppers[stopper_id]["state"] = {
-                "rest": False,
-                "request": False,
-                "move": {v: False for v in stopper_description["destiny"]},
+            self.previous_stoppers[stopper_id] = {
+                "state": {
+                    "rest": False,
+                    "request": False,
+                    "move": {v: False for v in stopper_description["destiny"]},
+                },
+                "time": 0,
             }
-            self.previous_stoppers[stopper_id]["time"] = 0
 
     def status_change(self, stopper: Stopper, actual_time: int):
         self.update_times(stopper, actual_time)
@@ -125,7 +128,7 @@ class TimesResultsController(BaseResultsController):
                         if move:
                             i += 1
                             break
-            
+
             self.busyness.append([actual_time, i / len(simulation.stoppers)])
             if self.busyness_update_callback:
                 self.busyness_update_callback(self, i / len(simulation.stoppers))
@@ -143,7 +146,7 @@ class TimesResultsController(BaseResultsController):
                 actual_time - self.previous_stoppers[stopper.stopper_id]["time"]
             )
 
-        for destiny in stopper.output_stoppers_ids:
+        for destiny in stopper.behaviorInfo.output_stoppers_ids:
             if self.previous_stoppers[stopper.stopper_id]["state"]["move"][destiny]:
                 self.times[stopper.stopper_id]["move"][destiny] += (
                     actual_time - self.previous_stoppers[stopper.stopper_id]["time"]

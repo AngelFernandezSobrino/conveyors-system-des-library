@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Any
 
 import desym.objects.stopper.core
 
@@ -21,9 +21,9 @@ class ParametrizedFunction():
 class BaseBehaviourController:
     def __init__(self, system_description):
         self.system_description = system_description
-        self.external_functions: dict[str, list[ParametrizedFunction]] = {}
-        self.check_request_functions: dict[str, list[ParametrizedFunction]] = {}
-        self.return_rest_functions: dict[str, any] = {}
+        self.external_functions: dict[desym.helpers.timed_events_manager.Step, list[ParametrizedFunction]] = {}
+        self.check_request_functions: dict[desym.objects.stopper.core.StopperId, list[ParametrizedFunction]] = {}
+        self.return_rest_functions: dict[desym.objects.stopper.core.StopperId, Any] = {}
 
 
 def delay(self: desym.objects.stopper.core.Stopper, params):
