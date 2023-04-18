@@ -1,10 +1,13 @@
-import pprint
+
+from statistics import mean
 import sys
 import time
 import os
-from typing import Dict, TypedDict
+from typing import Dict, List, TypedDict
 
 import logging
+
+from desym.objects.item import Item
 
 logger = logging.getLogger("main")
 logFormatter = logging.Formatter(fmt="%(name)s: %(message)s")
@@ -14,7 +17,7 @@ logger.addHandler(consoleHandler)
 logger.setLevel(logging.INFO)
 
 import paho.mqtt.publish
-import paho.mqtt
+import paho.mqtt.client
 
 import desym.helpers
 import desym.core
@@ -43,23 +46,23 @@ if wandb_enabled:
     wandb.define_metric("results/simulation_time")
     wandb.define_metric("results/*", step_metric="results/simulation_time")
 
-behavioursDict = TypedDict(
-    "behavioursType", {"baseline": behaviour_controller.BaseBehaviourController}
+behaviorsDict = TypedDict(
+    "behaviorsDict", {"baseline": behaviour_controller.BaseBehaviourController}
 )
 
-behaviours: behavioursDict = {
+behaviours: behaviorsDict = {
     "baseline": custom_behaviour.BaselineBehaviourController(config_parser.config)
 }
 
 resultsDict = TypedDict(
-    "resultsType",
+    "resultsDict",
     {
         "production": results_controller.CounterResultsController,
         "busyness": results_controller.TimesResultsController,
     },
 )
 
-wandb_data_dict = {}
+wandb_data_dict: dict = {}
 
 
 def wandb_production_update_callback(
@@ -94,14 +97,14 @@ steps = 100000
 time_one = time.time()
 time_two = time.time()
 
-sim_time_max = 0
-sim_time_min = 20
+sim_time_max: float = 0
+sim_time_min: float = 20
 
-callback_time_max = 0
-callback_time_min = 20
+callback_time_max: float = 0
+callback_time_min: float = 20
 
-sim_time_list = []
-callback_time_list = []
+sim_time_list: list[float] = []
+callback_time_list: list[float] = []
 
 calc_mean_interval = 0
 
@@ -163,8 +166,10 @@ def check_simulation_errors(core: desym.core.Simulation):
             raise Exception(f"Tray {tray} is not located at any stopper")
 
     # Check if all trays have different items
-    tray_items: Dict[str, list[str]] = {}
+    tray_items: Dict[str, list[Item]] = {}
     for tray in core.trays:
+        if not tray.item:
+            break
         if tray.tray_id in tray_items:
             tray_items[tray.tray_id].append(tray.item)
         else:
@@ -261,7 +266,7 @@ def send_data_to_mqtt(core: desym.core.Simulation):
             )
 
         for output_tray_id in stopper.output_trays:
-            if stopper.output_trays[output_tray_id] is not None:
+            if stopper.output_trays[output_tray_id]:
                 if stopper.output_trays[output_tray_id].item:
                     item_string = f"T: {stopper.output_trays[output_tray_id].item.item_type.value} S: {stopper.output_trays[output_tray_id].item.state}"
                 else:
@@ -318,8 +323,9 @@ def step_callback(core: desym.core.Simulation):
 def calculate_cycles_saturation(core: desym.core.Simulation):
     pass
 
+cycle = List[desym.objects.stopper.core.Stopper]
 
-class cycles:
+class GraphAnalizer:
     def __init__(
         self,
         stoppers: dict[
@@ -327,15 +333,18 @@ class cycles:
         ],
     ):
         # Dictionary with the output stoppers of each stopper that colide with a foreign cycle
-        self.cycle_cross_outputs: dict[
+        self.inputs_cycles_to_check: dict[
             desym.objects.stopper.core.StopperId,
-            list[desym.objects.stopper.core.StopperId],
+            dict[
+                desym.objects.stopper.core.StopperId,
+                list[cycle],
+            ],
         ] = {}
 
         self.stoppers = stoppers
         self.visited: dict[desym.objects.stopper.core.StopperId, bool] = {}
         self.stack: list[desym.objects.stopper.core.StopperId] = []
-        self.cycles: list[list[desym.objects.stopper.core.Stopper]] = []
+        self.cycles: list[cycle] = []
         self.path: list[desym.objects.stopper.core.Stopper] = []
 
         self.find_cycles()
@@ -347,7 +356,7 @@ class cycles:
 
         self.dfs(self.stoppers["PT01"])
 
-        return cycles
+        return GraphAnalizer
 
     def dfs(self, stopper: desym.objects.stopper.core.Stopper):
         self.visited[stopper.stopper_id] = True
@@ -365,35 +374,25 @@ class cycles:
         self.path.pop()
         self.visited[stopper.stopper_id] = False
 
-    # Calculate the consideration list. It has, for each stopper of the simulation, the output stopper ids that are part of a cycle but not the stopper itself
+    # Calculate the consideration list. It has, for each stopper of the simulation, a dict for each input stopper with list of cycles where the stopper is present but the input stopper is not.
     def calculate_consideration_list(self):
         for stopper in self.stoppers.values():
-            for output_stopper in stopper.output_stoppers:
+            for input_stopper in stopper.input_stoppers:
                 for cycle in self.cycles:
-                    if stopper in cycle and output_stopper not in cycle:
-                        if stopper.stopper_id not in self.cycle_cross_outputs:
-                            self.cycle_cross_outputs[stopper.stopper_id] = [
-                                output_stopper.stopper_id
-                            ]
-                        else:
-                            if (
-                                not output_stopper.stopper_id
-                                in self.cycle_cross_outputs[stopper.stopper_id]
-                            ):
-                                self.cycle_cross_outputs[stopper.stopper_id].append(
-                                    output_stopper.stopper_id
-                                )
+                    if input_stopper not in cycle and stopper in cycle:
+                        if stopper.stopper_id not in self.inputs_cycles_to_check:
+                            self.inputs_cycles_to_check[stopper.stopper_id] = {}
+                        if input_stopper.stopper_id not in self.inputs_cycles_to_check[stopper.stopper_id]:
+                            self.inputs_cycles_to_check[stopper.stopper_id][input_stopper.stopper_id] = [cycle]
+                        elif cycle not in self.inputs_cycles_to_check[stopper.stopper_id][input_stopper.stopper_id]:
+                            self.inputs_cycles_to_check[stopper.stopper_id][input_stopper.stopper_id].append(cycle)
 
 
 sim_core = desym.core.Simulation(
     config_parser.config, behaviours, results, wandb_step_callback
 )
 
-simulation_cycles = cycles(sim_core.stoppers)
-
-pprint.pprint(simulation_cycles.cycle_cross_outputs)
-
-sys.exit()
+simulation_cycles = GraphAnalizer(sim_core.stoppers)
 
 
 sim_core.config_steps(steps)
