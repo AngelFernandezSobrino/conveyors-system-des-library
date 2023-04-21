@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from desym.core import Simulation
     from desym.objects import Item, Stopper
     import desym.objects.system
-    from desym.objects.stopper.core import StopperId
 
 
 class StopperTimeResults(TypedDict):
@@ -88,7 +87,7 @@ class TimesResultsController(BaseResultsController):
 
         self.time_vector: List[int] = []
         self.times: Dict[str, StopperTimeResults] = {}
-        self.previous_stoppers: Dict[StopperId, PreviousData] = {}
+        self.previous_stoppers: Dict[Stopper.StopperId, PreviousData] = {}
         self.busyness: List[list] = [[0, 0]]
         self.system_description = system_description
         self.stopper_history: Dict[str, Dict[str, List[list]]] = {}

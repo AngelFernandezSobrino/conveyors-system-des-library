@@ -4,7 +4,8 @@ from typing import Dict
 
 if TYPE_CHECKING:
     import desym.objects.stopper.core
+    from desym.objects.stopper.core import Stopper
 
-SystemDescription = Dict[desym.objects.stopper.core.StopperId, desym.objects.stopper.core.StopperDescription]
+SystemDescription = Dict[Stopper.StopperId, desym.objects.stopper.core.StopperDescription]
 
-SimulationData = Dict[desym.objects.stopper.core.StopperId, desym.objects.stopper.core.Stopper]
+SimulationData = Dict[Stopper.StopperId, Stopper]

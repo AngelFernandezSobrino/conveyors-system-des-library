@@ -1,17 +1,17 @@
 from __future__ import annotations
-from typing import Callable, Dict, TypedDict, TYPE_CHECKING, TypeVar, Generic, List
+from typing import Callable, Dict, Mapping, TypedDict, TYPE_CHECKING, TypeVar, Generic, List
 
 import time
 
 from desym.helpers.timed_events_manager import Event, TimedEventsManager
-from desym.objects.stopper.core import Stopper, StopperId
+from desym.objects.stopper.core import Stopper
 from desym.objects.tray import Tray
 
 if TYPE_CHECKING:
     import desym.objects.system
 
 import desym.controllers.results_controller
-import desym.controllers.behaviour_controller
+import desym.controllers.behavior_controller
 
 import logging
 
@@ -27,17 +27,18 @@ class SimulationConfig(TypedDict):
     real_time_step: float
     steps: int
 
-BehaviourControllerType = TypeVar("BehaviourControllerType", bound=desym.controllers.behaviour_controller.BaseBehaviourController)
+BehaviorControllerType = TypeVar("BehaviorControllerType", bound=desym.controllers.behavior_controller.BaseBehaviourController)
+
 ResultsControllerType = TypeVar("ResultsControllerType", bound=desym.controllers.results_controller.BaseResultsController)
 
-class Simulation(Generic[BehaviourControllerType, ResultsControllerType]):
+class Simulation(Generic[BehaviorControllerType, ResultsControllerType]):
     def __init__(
         self,
         system_description: desym.objects.system.SystemDescription,
-        behaviour_controllers: Dict[
-            str, BehaviourControllerType
+        behavior_controllers: Mapping[
+            str, BehaviorControllerType
         ],
-        results_controllers: Dict[
+        results_controllers: Mapping[
             str, ResultsControllerType
         ],
         step_callback: Callable[[Simulation], None] | None,
@@ -56,19 +57,19 @@ class Simulation(Generic[BehaviourControllerType, ResultsControllerType]):
 
         self.end_callback = None
 
-        self.stoppers: dict[StopperId, Stopper[BehaviourControllerType, ResultsControllerType]] = {}
+        self.stoppers: dict[Stopper.StopperId, Stopper[BehaviorControllerType, ResultsControllerType]] = {}
         self.trays: list[Tray] = []
 
         self.events_manager = TimedEventsManager()
         self.results_controllers = results_controllers
 
         for stopper_id, stopper_description in self.system_description.items():
-            self.stoppers[stopper_id] = Stopper[BehaviourControllerType, ResultsControllerType](
+            self.stoppers[stopper_id] = Stopper[BehaviorControllerType, ResultsControllerType](
                 stopper_id,
                 stopper_description,
                 self.system_description,
                 self,
-                behaviour_controllers,
+                behavior_controllers,
                 results_controllers,
                 False,
             )
@@ -76,11 +77,11 @@ class Simulation(Generic[BehaviourControllerType, ResultsControllerType]):
         for stopper in self.stoppers.values():
             stopper.post_init()
 
-        for behaviour_controller in behaviour_controllers.values():
+        for behavior_controller in behavior_controllers.values():
             for (
                 step,
                 external_function_list,
-            ) in behaviour_controller.external_functions.items():
+            ) in behavior_controller.external_functions.items():
                 for external_function in external_function_list:
                     
                     self.events_manager.add(

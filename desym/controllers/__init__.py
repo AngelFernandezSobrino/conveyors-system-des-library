@@ -1,2 +1,2 @@
-from . import behaviour_controller
+from . import behavior_controller
 from . import results_controller

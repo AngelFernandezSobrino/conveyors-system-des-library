@@ -1,7 +1,7 @@
 from typing import Dict
 from enum import Enum
 
-from desym.controllers.behaviour_controller import (
+from desym.controllers.behavior_controller import (
     ParametrizedFunction,
     BaseBehaviourController,
     delay,

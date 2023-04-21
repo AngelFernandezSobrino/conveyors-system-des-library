@@ -1,6 +1,6 @@
 from __future__ import annotations
 import dataclasses
-from typing import TypedDict, TYPE_CHECKING, Union, Dict, TypeVar, Generic
+from typing import Mapping, TypedDict, TYPE_CHECKING, Union, Dict, TypeVar, Generic
 
 from desym.objects.tray import Tray
 from . import events
@@ -10,14 +10,12 @@ if TYPE_CHECKING:
     import desym.objects.system
 
 import desym.controllers.results_controller
-import desym.controllers.behaviour_controller
+import desym.controllers.behavior_controller
 import desym.core
-
-StopperId = str
 
 
 class StopperDescription(TypedDict):
-    destiny: list[StopperId]
+    destiny: list[Stopper.StopperId]
     steps: list[int]
     move_behaviour: list[str]
     rest_steps: list[int]
@@ -25,9 +23,9 @@ class StopperDescription(TypedDict):
     priority: int
 
 
-BehaviourControllerType = TypeVar(
-    "BehaviourControllerType",
-    bound=desym.controllers.behaviour_controller.BaseBehaviourController,
+BehaviorControllerType = TypeVar(
+    "BehaviorControllerType",
+    bound=desym.controllers.behavior_controller.BaseBehaviourController,
 )
 ResultsControllerType = TypeVar(
     "ResultsControllerType",
@@ -35,20 +33,23 @@ ResultsControllerType = TypeVar(
 )
 
 
-class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
+class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
+    
+    StopperId = Union[str, str]
+
     def __init__(
         self,
         stopper_id: str,
         stopper_description: StopperDescription,
         simulation_description: desym.objects.system.SystemDescription,
         simulation: desym.core.Simulation,
-        behaviour_controllers: Dict[str, BehaviourControllerType],
-        results_controllers: Dict[str, ResultsControllerType],
+        behavior_controllers: Mapping[str, BehaviorControllerType],
+        results_controllers: Mapping[str, ResultsControllerType],
         debug,
     ):
         self.stopper_id = stopper_id
         self.stopper_description = stopper_description
-        self.behaviour_controllers = behaviour_controllers
+        self.behaviour_controllers = behavior_controllers
         self.results_controllers = results_controllers
         self.simulation_description = simulation_description
 
@@ -66,7 +67,7 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
         self.input_stoppers: list[Stopper] = []
 
         # Stopper tray data
-        self.output_trays: dict[StopperId, Union[Tray, None]] = {
+        self.output_trays: dict[Stopper.StopperId, Union[Tray, None]] = {
             v: None for v in self.stopper_description["destiny"]
         }
         self.input_tray: Union[Tray, None] = None
@@ -74,23 +75,23 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
         # Request time
         self.tray_arrival_time = 0
 
-        # External functions behaviour
+        # External functions behavior
         self.return_rest_functions: list[
-            desym.controllers.behaviour_controller.ParametrizedFunction
+            desym.controllers.behavior_controller.ParametrizedFunction
         ] = []
         self.check_requests_functions: list[
-            desym.controllers.behaviour_controller.ParametrizedFunction
+            desym.controllers.behavior_controller.ParametrizedFunction
         ] = []
 
-        for behaviour_controller in behaviour_controllers.values():
-            if self.stopper_id in behaviour_controller.return_rest_functions:
-                self.return_rest_functions = behaviour_controller.return_rest_functions[
+        for behavior_controller in behavior_controllers.values():
+            if self.stopper_id in behavior_controller.return_rest_functions:
+                self.return_rest_functions = behavior_controller.return_rest_functions[
                     self.stopper_id
                 ]
 
-            if self.stopper_id in behaviour_controller.check_request_functions:
+            if self.stopper_id in behavior_controller.check_request_functions:
                 self.check_requests_functions = (
-                    behaviour_controller.check_request_functions[self.stopper_id]
+                    behavior_controller.check_request_functions[self.stopper_id]
                 )
 
         # Stopper composition objects
@@ -118,8 +119,8 @@ class Stopper(Generic[BehaviourControllerType, ResultsControllerType]):
         if not self.states.request:
             return
 
-        for behaviour_controller in self.check_requests_functions:
-            behaviour_controller(self)
+        for behavior_controller in self.check_requests_functions:
+            behavior_controller(self)
 
         self._check_move()
 
@@ -165,7 +166,7 @@ class BehaviorInfo:
             self.output_stoppers_ids[k]: v
             for k, v in enumerate(stopper_description["move_behaviour"])
         }
-        self.input_stoppers_ids: list[StopperId] = []
+        self.input_stoppers_ids: list[Stopper.StopperId] = []
         for external_stopper_id, stopper_info in simulation_description.items():
             if stopper_id in stopper_info["destiny"]:
                 self.input_stoppers_ids += [external_stopper_id]

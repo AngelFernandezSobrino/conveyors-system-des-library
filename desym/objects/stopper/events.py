@@ -6,9 +6,9 @@ from desym.objects.tray import Tray
 
 if TYPE_CHECKING:
     from . import core
-    from desym.objects.stopper.core import StopperId
+    from desym.objects.stopper.core import Stopper
 
-# This classes implement the events connections of the stoppers to other stoppers and to the behaviour controller
+# This classes implement the events connections of the stoppers to other stoppers and to the behavior controller
 
 
 class InputEvents:
@@ -32,7 +32,7 @@ class InputEvents:
         if self.c.states.request:
             self.c._check_move()
 
-    # Externl event to stop tray movement from behaviour controller
+    # Externl event to stop tray movement from behavior controller
     def lock(self, output_ids: list[str] = [], all: bool = False):
         if all:
             for output_id in self.c.behaviorInfo.output_stoppers_ids:
@@ -57,6 +57,14 @@ class InputEvents:
         if state_changed:
             self.c._check_move()
 
+    def graph_lock(self, output_ids: list[str] = []):
+        for output_id in output_ids:
+            self.c.states.graph_stop[output_id] = True
+
+    def graph_unlock(self, output_ids: list[str] = []):
+        for output_id in output_ids:
+            self.c.states.graph_stop[output_id] = False
+
 
 # Output events class, used by the stopper to send events to other stoppers
 class OutputEvents:
@@ -68,7 +76,7 @@ class OutputEvents:
         self.c.simulation.stoppers[destiny].input_events.sending_tray(self.c.stopper_id)
 
     # Used to send a tray to a destiny stopper
-    def tray_send(self, destiny: StopperId):
+    def tray_send(self, destiny: Stopper.StopperId):
         output_object = self.c.output_trays[destiny]
         if output_object is None:
             raise Exception("Output tray is empty")

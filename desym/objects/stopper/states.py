@@ -5,6 +5,7 @@ from desym.helpers.timed_events_manager import Event
 
 if TYPE_CHECKING:
     from . import core
+    from .core import Stopper
 
 DestinyId = str
 
@@ -25,7 +26,7 @@ class State:
         self.request = False
         self.move = {v: False for v in self.c.stopper_description["destiny"]}
 
-        # The path is locked by the behaviour controller
+        # The path is locked by the behavior controller
         self.management_stop = {
             destiny: True
             if self.c.stopper_description["default_locked"] == "True"
@@ -33,7 +34,11 @@ class State:
             for destiny in self.c.stopper_description["destiny"]
         }
 
-    def go_move(self, destiny: core.StopperId) -> None:
+        self.graph_stop = {
+            destiny: False for destiny in self.c.stopper_description["destiny"]
+        }
+
+    def go_move(self, destiny: Stopper.StopperId) -> None:
         if not self.c.simulation.stoppers[destiny].its_available():
             raise Exception(
                 f"Destiny not available in the destiny stopper {destiny} for the stopper {self.c.stopper_id}"
@@ -54,7 +59,7 @@ class State:
         if self.c.behaviorInfo.move_behaviour[destiny] == 1:
             self.c.events_manager.push(
                 Event(self.go_available, tuple(), {}),
-                self.c.behaviorInfo.return_available_steps[destiny]
+                self.c.behaviorInfo.return_available_steps[destiny],
             )
         if self.c.behaviorInfo.move_behaviour[destiny] == 0:
             self.go_available()
