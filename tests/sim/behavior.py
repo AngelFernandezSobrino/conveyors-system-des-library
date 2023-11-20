@@ -1,5 +1,7 @@
-from typing import Dict
 from enum import Enum
+from typing import Dict
+
+from tests.sim.item import Product, ProductTypeReferences
 
 from desym.controllers.behavior_controller import (
     ParametrizedFunction,
@@ -11,27 +13,25 @@ from desym.controllers.results_controller import (
     CounterResultsController,
     TimesResultsController,
 )
-from desym.objects import Tray, Item
+from desym.objects.container import Container
 from desym.objects.stopper.core import Stopper
+
+import desym.core
 
 import logging
 
 logger = logging.getLogger("main.behaviour")
 
 
-class ProductType(Enum):
-    product_1 = "1"
-    product_2 = "2"
-    product_3 = "3"
 
 
 tray_index = 1
-product_type_index: ProductType = ProductType.product_1
+product_type_index: ProductTypeReferences = ProductTypeReferences.product_1
 
-product_id_index: Dict[ProductType, int] = {
-    ProductType.product_1: 1,
-    ProductType.product_2: 1,
-    ProductType.product_3: 1,
+product_serial_number_database: Dict[ProductTypeReferences, int] = {
+    ProductTypeReferences.product_1: 1,
+    ProductTypeReferences.product_2: 1,
+    ProductTypeReferences.product_3: 1,
 }
 
 
@@ -95,15 +95,15 @@ class CaseStopper(
     pass
 
 
-def external_input(stopper: CaseStopper, params):
+def external_input(simulation: desym.core.Simulation, params):
     global tray_index
-    if tray_index < 25:
+    if tray_index < 15:
         # logger.debug("New tray entrance at PT01, with id " + str(tray_index))
         logger.debug(f"New tray entrance at PT01, with id {tray_index}")
-        new_tray = Tray(str(tray_index), None)
+        new_tray = Container(str(tray_index), None)
         tray_index += 1
-        stopper.simulation.trays.append(new_tray)
-        stopper.simulation.stoppers["PT01"].input_events.tray_arrival(new_tray)
+        simulation.containers.append(new_tray)
+        simulation.stoppers["PT01"].input_events.tray_arrival(new_tray)
 
 
 def calculate_busyness(stopper: CaseStopper, params):
@@ -117,102 +117,102 @@ def calculate_busyness(stopper: CaseStopper, params):
 def empty_tray(stopper: Stopper, params):
     if not stopper.input_tray:
         return
-    if not stopper.input_tray.item:
+    if not stopper.input_tray.content:
         return
-    if not stopper.input_tray.item.state:
+    if not stopper.input_tray.content.state:
         return
-    
-    if stopper.input_tray.item and stopper.input_tray.item.state == "1":
+
+    if stopper.input_tray.content and stopper.input_tray.content.state == "1":
         logger.debug(f"Emptying {stopper.input_tray} in {stopper}")
         stopper.results_controllers["production"].increment(
-            stopper.input_tray.item.item_type, stopper.events_manager.step
+            stopper.input_tray.content.item_type, stopper.events_manager.step
         )
-        stopper.input_tray.item = None
+        stopper.input_tray.content = None
 
 
 def fill_tray_one_product(stopper: Stopper, params):
-    global product_id_index
+    global product_serial_number_database
     logger.debug(
-        f"Filling {stopper.input_tray} in {stopper} with product id {product_id_index[product_type_index]} of type {product_type_index.name}"
+        f"Filling {stopper.input_tray} in {stopper} with product id {product_serial_number_database[product_type_index]} of type {product_type_index.name}"
     )
     if not stopper.input_tray:
         return
-    
-    if stopper.input_tray.load_item(
-        Item(str(product_id_index[product_type_index]), ProductType.product_1, "0")
+
+    if stopper.input_tray.load(
+        Product(str(product_serial_number_database[product_type_index]), ProductTypeReferences.product_1, "0")
     ):
-        product_id_index[product_type_index] += 1
+        product_serial_number_database[product_type_index] += 1
 
 
 def fill_tray_three_products(stopper: Stopper, params):
-    global product_type_index, product_id_index
+    global product_type_index, product_serial_number_database
     logger.debug(
-        f"Filling {stopper.input_tray} in {stopper} with product id {product_id_index[product_type_index]} of type {product_type_index.name}"
+        f"Filling {stopper.input_tray} in {stopper} with product id {product_serial_number_database[product_type_index]} of type {product_type_index.name}"
     )
     if not stopper.input_tray:
         return
-    if stopper.input_tray.item:
+    if stopper.input_tray.content:
         return
 
-    if product_type_index == ProductType.product_1:
-        if stopper.input_tray.load_item(
-            Item(str(product_id_index[product_type_index]), ProductType.product_1, "0")
+    if product_type_index == ProductTypeReferences.product_1:
+        if stopper.input_tray.load(
+            Product(str(product_serial_number_database[product_type_index]), ProductTypeReferences.product_1, "0")
         ):
-            product_id_index[product_type_index] += 1
-        product_type_index = ProductType.product_2
-    elif product_type_index == ProductType.product_2:
-        if stopper.input_tray.load_item(
-            Item(str(product_id_index[product_type_index]), ProductType.product_2, "0")
+            product_serial_number_database[product_type_index] += 1
+        product_type_index = ProductTypeReferences.product_2
+    elif product_type_index == ProductTypeReferences.product_2:
+        if stopper.input_tray.load(
+            Product(str(product_serial_number_database[product_type_index]), ProductTypeReferences.product_2, "0")
         ):
-            product_id_index[product_type_index] += 1
-        product_type_index = ProductType.product_3
-    elif product_type_index == ProductType.product_3:
-        if stopper.input_tray.load_item(
-            Item(str(product_id_index[product_type_index]), ProductType.product_3, "0")
+            product_serial_number_database[product_type_index] += 1
+        product_type_index = ProductTypeReferences.product_3
+    elif product_type_index == ProductTypeReferences.product_3:
+        if stopper.input_tray.load(
+            Product(str(product_serial_number_database[product_type_index]), ProductTypeReferences.product_3, "0")
         ):
-            product_id_index[product_type_index] += 1
-        product_type_index = ProductType.product_1
+            product_serial_number_database[product_type_index] += 1
+        product_type_index = ProductTypeReferences.product_1
 
 
 def process_01(stopper: Stopper, params):
-    if not (stopper.input_tray and stopper.input_tray.item):
+    if not (stopper.input_tray and stopper.input_tray.content):
         return
 
     if (
-        stopper.input_tray.item.item_type == ProductType.product_1
-        and stopper.input_tray.item.state == "0"
+        stopper.input_tray.content.item_type == ProductTypeReferences.product_1
+        and stopper.input_tray.content.state == "0"
     ):
         logger.debug(f"Process 01: Processing {stopper.input_tray} in {stopper}")
-        stopper.input_tray.item.update_state("1")
+        stopper.input_tray.content.update_state("1")
 
 
 def process_02(stopper: Stopper, params):
     if (
         stopper.input_tray
-        and stopper.input_tray.item
-        and stopper.input_tray.item.item_type == ProductType.product_2
-        and stopper.input_tray.item.state == "0"
+        and stopper.input_tray.content
+        and stopper.input_tray.content.item_type == ProductTypeReferences.product_2
+        and stopper.input_tray.content.state == "0"
     ):
         logger.debug(f"Process 02: Processing {stopper.input_tray} in {stopper}")
-        stopper.input_tray.item.update_state("1")
+        stopper.input_tray.content.update_state("1")
 
 
 def process_03(stopper: Stopper, params):
     if (
         stopper.input_tray
-        and stopper.input_tray.item
-        and stopper.input_tray.item.item_type == ProductType.product_3
-        and stopper.input_tray.item.state == "0"
+        and stopper.input_tray.content
+        and stopper.input_tray.content.item_type == ProductTypeReferences.product_3
+        and stopper.input_tray.content.state == "0"
     ):
         logger.debug(f"Process 03: Processing {stopper.input_tray} in {stopper}")
-        stopper.input_tray.item.update_state("1")
+        stopper.input_tray.content.update_state("1")
 
 
 def bifurcation_pt05(stopper: Stopper, params):
     if not stopper.input_tray:
         return
-    
-    if stopper.input_tray.item:
+
+    if stopper.input_tray.content:
         logger.debug(f"Bifurcation PT05: Moving {stopper.input_tray} to DIR08")
         stopper.input_events.lock(["DIR05"])
         stopper.input_events.unlock(["DIR08"])
@@ -225,9 +225,9 @@ def bifurcation_pt05(stopper: Stopper, params):
 def bifurcation_pt09(stopper: Stopper, params):
     if (
         stopper.input_tray
-        and stopper.input_tray.item
-        and stopper.input_tray.item.item_type == ProductType.product_1
-        and stopper.input_tray.item.state == "0"
+        and stopper.input_tray.content
+        and stopper.input_tray.content.item_type == ProductTypeReferences.product_1
+        and stopper.input_tray.content.state == "0"
     ):
         logger.debug(f"Bifurcation PT09: Moving {stopper.input_tray} to DIR11")
         stopper.input_events.lock(["DIR11"])
@@ -241,9 +241,9 @@ def bifurcation_pt09(stopper: Stopper, params):
 def bifurcation_pt10(stopper: Stopper, params):
     if (
         stopper.input_tray
-        and stopper.input_tray.item
-        and stopper.input_tray.item.item_type == ProductType.product_3
-        and stopper.input_tray.item.state == "0"
+        and stopper.input_tray.content
+        and stopper.input_tray.content.item_type == ProductTypeReferences.product_3
+        and stopper.input_tray.content.state == "0"
     ):
         logger.debug(f"Bifurcation PT10: Moving {stopper.input_tray} to DIR15")
         stopper.input_events.lock(["DIR13"])
@@ -257,8 +257,8 @@ def bifurcation_pt10(stopper: Stopper, params):
 def bifurcation_pt16(stopper: Stopper, params):
     if not stopper.input_tray:
         return
-    
-    if not stopper.input_tray.item or stopper.input_tray.item.state == "1":
+
+    if not stopper.input_tray.content or stopper.input_tray.content.state == "1":
         logger.debug(f"Bifurcation PT16: Moving {stopper.input_tray} to DIR07")
         stopper.input_events.lock(["PT17"])
         stopper.input_events.unlock(["DIR07"])

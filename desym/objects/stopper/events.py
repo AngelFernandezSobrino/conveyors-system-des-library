@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 
-from desym.objects.tray import Tray
+from desym.objects.container import Container
 
 if TYPE_CHECKING:
     from . import core
@@ -20,7 +20,7 @@ class InputEvents:
         self.c.states.go_reserved()
 
     # Tray arrival event, used by the stopper to go to request state and manage tray data
-    def tray_arrival(self, tray: Tray):
+    def tray_arrival(self, tray: Container):
         if self.c.input_tray is not None:
             raise Exception("Input tray is not empty")
         self.c.input_tray = tray

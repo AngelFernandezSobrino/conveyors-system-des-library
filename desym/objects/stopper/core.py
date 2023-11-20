@@ -2,7 +2,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Mapping, TypedDict, TYPE_CHECKING, Union, Dict, TypeVar, Generic
 
-from desym.objects.tray import Tray
+from desym.objects.container import Container
 from . import events
 from . import states
 
@@ -67,10 +67,10 @@ class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
         self.input_stoppers: list[Stopper] = []
 
         # Stopper tray data
-        self.output_trays: dict[Stopper.StopperId, Union[Tray, None]] = {
+        self.output_trays: dict[Stopper.StopperId, Union[Container, None]] = {
             v: None for v in self.stopper_description["destiny"]
         }
-        self.input_tray: Union[Tray, None] = None
+        self.input_tray: Union[Container, None] = None
 
         # Request time
         self.tray_arrival_time = 0
@@ -95,9 +95,9 @@ class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
                 )
 
         # Stopper composition objects
-        self.input_events = events.InputEvents(self)
-        self.output_events = events.OutputEvents(self)
-        self.states = states.State(self)
+        self.input_events: events.InputEvents = events.InputEvents(self)
+        self.output_events: events.OutputEvents = events.OutputEvents(self)
+        self.states: states.State = states.State(self)
 
     def __str__(self) -> str:
         return f"Stopper {self.stopper_id}"

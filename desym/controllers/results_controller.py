@@ -1,14 +1,13 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, TypedDict, Dict, List
+from typing import TYPE_CHECKING, Any, Callable, Hashable, Iterable, Optional, TypeVar, TypedDict, Dict, List
 
 from enum import Enum
 from copy import deepcopy
 
 
-
 if TYPE_CHECKING:
     from desym.core import Simulation
-    from desym.objects import Item, Stopper
+    from desym.objects.stopper.core import Stopper
     import desym.objects.system
 
 
@@ -33,45 +32,47 @@ class BaseResultsController:
     def __init__(self):
         pass
 
-    def simulation_start(self, simulation, actual_time: int):
-        raise NotImplementedError
-
-    def status_change(self, stopper: Stopper, actual_time: int):
+    def simulation_start(self, simulation, step: int):
         pass
 
-    def simulation_end(self, simulation, actual_time: int):
-        raise NotImplementedError
+    def status_change(self, stopper: Stopper, step: int):
+        pass
+
+    def simulation_end(self, simulation, step: int):
+        pass
 
 
 class CounterResultsController(BaseResultsController):
-    def __init__(self, counters: List[str], data_change_callback=None):
+    def __init__(self, counters: Any, data_change_callback: Optional[Callable[[CounterResultsController, Any, int], None]] = None):
         super().__init__()
         self.data_change_callback = data_change_callback
         self.counter_indexes = counters
-        self.counters: Dict[str, int] = {}
-        self.counters_timeseries: Dict[str, List[List[int]]] = {}
+        self.counters: Dict[Any, int] = {}
+        self.counters_timeseries: Dict[Any, List[List[int]]] = {}
+        for counter_index in self.counter_indexes:
+            self.counters[counter_index] = 0
+            self.counters_timeseries[counter_index] = [[0, 0]]
 
-    def increment(self, counter_index: str, actual_time: int):
+    def increment(self, counter_index: Any, step: int):
         self.counters[counter_index] += 1
-        self._register(counter_index, actual_time)
+        self._register(counter_index, step)
 
-    def simulation_start(self, simulation, actual_time: int):
+    def simulation_start(self, simulation, step: int):
+        for counter_index in self.counter_indexes:
+            self.counters_timeseries[counter_index].append([step, self.counters[counter_index]])
+            if self.data_change_callback:
+                self.data_change_callback(self, counter_index, step)
+
+    def simulation_end(self, simulation, step: int):
         for model in self.counter_indexes:
-            self.counters[model] = 0
-            self.counters_timeseries[model] = [[0, 0]]
-            self.counters_timeseries[model].append([actual_time, self.counters[model]])
-            self.data_change_callback(self, model, actual_time)
+            self.counters_timeseries[model].append([step, self.counters[model]])
 
-    def simulation_end(self, simulation, actual_time: int):
-        for model in self.counter_indexes:
-            self.counters_timeseries[model].append([actual_time, self.counters[model]])
-
-    def _register(self, counter_index: str, actual_time: int):
+    def _register(self, counter_index: Hashable, step: int):
         self.counters_timeseries[counter_index].append(
-            [actual_time, self.counters[counter_index]]
+            [step, self.counters[counter_index]]
         )
         if self.data_change_callback:
-            self.data_change_callback(self, counter_index, actual_time)
+            self.data_change_callback(self, counter_index, step)
 
 
 class TimesResultsController(BaseResultsController):
@@ -106,8 +107,8 @@ class TimesResultsController(BaseResultsController):
                 "time": 0,
             }
 
-    def status_change(self, stopper: Stopper, actual_time: int):
-        self.update_times(stopper, actual_time)
+    def status_change(self, stopper: Stopper, step: int):
+        self.update_times(stopper, step)
 
     def simulation_start(self, simulation, actual_time: int):
         self.simulation_end(simulation, actual_time)
@@ -116,8 +117,8 @@ class TimesResultsController(BaseResultsController):
         self.update_all_times(simulation, actual_time)
         self.time_vector = list(range(0, actual_time))
 
-    def calculate_busyness(self, simulation: Simulation, actual_time: int):
-        if self.busyness[-1][0] != actual_time:
+    def calculate_busyness(self, simulation: Simulation, step: int):
+        if self.busyness[-1][0] != step:
             i = 0
             for stopper_other in simulation.stoppers.values():
                 if stopper_other.states.request:
@@ -128,27 +129,27 @@ class TimesResultsController(BaseResultsController):
                             i += 1
                             break
 
-            self.busyness.append([actual_time, i / len(simulation.stoppers)])
+            self.busyness.append([step, i / len(simulation.stoppers)])
             if self.busyness_update_callback:
-                self.busyness_update_callback(self, i / len(simulation.stoppers))
+                self.busyness_update_callback(self, i / len(simulation.stoppers), step)
             if self.time_update_callback:
-                self.time_update_callback(self)
+                self.time_update_callback(self, step)
 
-    def update_times(self, stopper: Stopper, actual_time: int):
+    def update_times(self, stopper: Stopper, step: int):
         if self.previous_stoppers[stopper.stopper_id]["state"]["rest"]:
             self.times[stopper.stopper_id]["rest"] += (
-                actual_time - self.previous_stoppers[stopper.stopper_id]["time"]
+                step - self.previous_stoppers[stopper.stopper_id]["time"]
             )
 
         if self.previous_stoppers[stopper.stopper_id]["state"]["request"]:
             self.times[stopper.stopper_id]["request"] += (
-                actual_time - self.previous_stoppers[stopper.stopper_id]["time"]
+                step - self.previous_stoppers[stopper.stopper_id]["time"]
             )
 
         for destiny in stopper.behaviorInfo.output_stoppers_ids:
             if self.previous_stoppers[stopper.stopper_id]["state"]["move"][destiny]:
                 self.times[stopper.stopper_id]["move"][destiny] += (
-                    actual_time - self.previous_stoppers[stopper.stopper_id]["time"]
+                    step - self.previous_stoppers[stopper.stopper_id]["time"]
                 )
 
         self.previous_stoppers[stopper.stopper_id]["state"]["rest"] = deepcopy(
@@ -160,9 +161,9 @@ class TimesResultsController(BaseResultsController):
         self.previous_stoppers[stopper.stopper_id]["state"]["move"] = deepcopy(
             stopper.states.move
         )
-        self.previous_stoppers[stopper.stopper_id]["time"] = actual_time
+        self.previous_stoppers[stopper.stopper_id]["time"] = step
         if self.time_update_callback:
-            self.time_update_callback(self)
+            self.time_update_callback(self, step)
 
     def update_all_times(self, simulation, actual_time: int):
         for stopper_id in self.system_description.keys():

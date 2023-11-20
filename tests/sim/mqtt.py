@@ -1,4 +1,8 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Tuple
+
+from tests.sim.logger import logger
+
+from desym.core import Simulation
 
 if TYPE_CHECKING:
     from desym.core import Simulation
@@ -8,18 +12,39 @@ import paho.mqtt.client
 
 
 def send_data_to_mqtt(core: Simulation):
-    msg_list = [("desym/step", str(core.events_manager.step), 0, False)]
+    # Check if static variable is defined
+    if send_data_to_mqtt.mqtt_server_available is None:  # type: ignore
+        # Check if port 80 is open
+        import socket
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = sock.connect_ex(("127.0.0.1", 80))
+        if result == 0:
+            logger.info("Port is open")
+            send_data_to_mqtt.mqtt_server_available = 1  # type: ignore
+        else:
+            logger.info("Port is not open")
+            send_data_to_mqtt.mqtt_server_available = -1  # type: ignore
+            return
+        sock.close()
+
+    elif send_data_to_mqtt.mqtt_server_available == -1:  # type: ignore
+        return
+
+    msg_list: List[Tuple[str, str, int, bool]] = [
+        ("desym/step", str(core.events_manager.step), 0, False)
+    ]
 
     for stopper in core.stoppers.values():
         if stopper.input_tray is not None:
-            if stopper.input_tray.item:
-                item_string = f" T: {stopper.input_tray.item.item_type.value} S: {stopper.input_tray.item.state}"
+            if stopper.input_tray.content:
+                item_string = f" T: {stopper.input_tray.content.item_type.value} S: {stopper.input_tray.content.state}"
             else:
                 item_string = ""
             msg_list.append(
                 (
                     f"desym/stopper/{stopper.stopper_id}/input",
-                    str(f"Id: {stopper.input_tray.tray_id} {item_string}"),
+                    str(f"Id: {stopper.input_tray.id} {item_string}"),
                     0,
                     False,
                 )
@@ -31,15 +56,15 @@ def send_data_to_mqtt(core: Simulation):
 
         for output_tray_id in stopper.output_trays:
             if stopper.output_trays[output_tray_id]:
-                if stopper.output_trays[output_tray_id].item:
-                    item_string = f"T: {stopper.output_trays[output_tray_id].item.item_type.value} S: {stopper.output_trays[output_tray_id].item.state}"
+                if stopper.output_trays[output_tray_id].content:
+                    item_string = f"T: {stopper.output_trays[output_tray_id].content.item_type.value} S: {stopper.output_trays[output_tray_id].content.state}"
                 else:
                     item_string = ""
                 msg_list.append(
                     (
                         f"desym/stopper/{stopper.stopper_id}/output/{output_tray_id}",
                         str(
-                            f"Id: {stopper.output_trays[output_tray_id].tray_id} {item_string}"
+                            f"Id: {stopper.output_trays[output_tray_id].id} {item_string}"
                         ),
                         0,
                         False,
@@ -67,3 +92,6 @@ def send_data_to_mqtt(core: Simulation):
         protocol=paho.mqtt.client.MQTTv311,
         transport="tcp",
     )
+
+
+send_data_to_mqtt.mqtt_server_available = None  # type: ignore

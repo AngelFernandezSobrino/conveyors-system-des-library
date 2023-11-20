@@ -1,14 +1,14 @@
 from typing import TYPE_CHECKING, Dict
 
 import tests.sim.settings as settings
-import tests.sim.logger as logger
+from tests.sim.logger import logger
 
 import desym.core
 
 if TYPE_CHECKING:
-    from desym.objects.tray import Item
+    from tests.sim.item import Product
 
-
+from math import fsum
 import time
 
 time_one = time.time()
@@ -27,28 +27,29 @@ calc_mean_interval = 0
 
 lines_to_delete = 0
 
+
 def check_simulation_errors(core: desym.core.Simulation):
     # Loop over all stopper objects and check if any tray is located at two places at the same time
     tray_locations: Dict[str, list[str]] = {}
     for stopper in core.stoppers.values():
         if stopper.input_tray:
-            if stopper.input_tray.tray_id in tray_locations:
-                tray_locations[stopper.input_tray.tray_id].append(
+            if stopper.input_tray.id in tray_locations:
+                tray_locations[stopper.input_tray.id].append(
                     stopper.stopper_id + " input"
                 )
             else:
-                tray_locations[stopper.input_tray.tray_id] = [
+                tray_locations[stopper.input_tray.id] = [
                     stopper.stopper_id + " input"
                 ]
         output = 0
         for tray in stopper.output_trays.values():
             if tray:
-                if tray.tray_id in tray_locations:
-                    tray_locations[tray.tray_id].append(
+                if tray.id in tray_locations:
+                    tray_locations[tray.id].append(
                         stopper.stopper_id + f" output {output}"
                     )
                 else:
-                    tray_locations[tray.tray_id] = [
+                    tray_locations[tray.id] = [
                         stopper.stopper_id + f" output {output}"
                     ]
             output += 1
@@ -65,20 +66,20 @@ def check_simulation_errors(core: desym.core.Simulation):
             raise Exception(f"Tray {tray_id} is located at {tray_locations[tray_id]}")
 
     # Check if all trays in simulation are located at some stopper
-    for tray in core.trays:
-        if tray.tray_id not in tray_locations:
+    for tray in core.containers:
+        if tray.id not in tray_locations:
             logger.error(f"Tray {tray} is not located at any stopper")
             raise Exception(f"Tray {tray} is not located at any stopper")
 
     # Check if all trays have different items
-    tray_items: Dict[str, list[Item]] = {}
-    for tray in core.trays:
-        if not tray.item:
+    tray_items: Dict[str, list[Product]] = {}
+    for tray in core.containers:
+        if not tray.content:
             break
-        if tray.tray_id in tray_items:
-            tray_items[tray.tray_id].append(tray.item)
+        if tray.id in tray_items:
+            tray_items[tray.id].append(tray.content)
         else:
-            tray_items[tray.tray_id] = [tray.item]
+            tray_items[tray.id] = [tray.content]
 
     for tray_id in tray_items:
         if len(tray_items[tray_id]) > 1:
@@ -91,7 +92,7 @@ def print_simulation_data(core: desym.core.Simulation):
     next_lines_to_delete = 2
     tray_string = ""
     for stopper in core.stoppers.values():
-        tray_string += f"Stopper {stopper.stopper_id} input: {stopper.input_tray.tray_id if stopper.input_tray is not None else None } { [tray.tray_id if tray is not None else None for tray in stopper.output_trays.values()]} \n "
+        tray_string += f"Stopper {stopper.stopper_id} input: {stopper.input_tray.id if stopper.input_tray is not None else None } { [tray.id if tray is not None else None for tray in stopper.output_trays.values()]} \n "
         next_lines_to_delete += 1
     global sim_time_max, sim_time_min, callback_time_max, callback_time_min, calc_mean_interval
     sim_time = (time_one - time_two) * 1000
@@ -120,12 +121,13 @@ def print_simulation_data(core: desym.core.Simulation):
         sim_time_list.pop(0)
         callback_time_list.pop(0)
     if len(sim_time_list) > 0:
-        sim_time_mean = sum(sim_time_list) / len(sim_time_list)
-        callback_time_mean = sum(callback_time_list) / len(callback_time_list)
+        sim_time_mean = sum(sim_time_list) / len(sim_time_list)  # type: ignore
+        callback_time_mean = sum(callback_time_list) / len(callback_time_list)  # type: ignore
     for i in range(lines_to_delete):
         LINE_UP = "\033[1A"
         LINE_CLEAR = "\x1b[2K"
         print(LINE_UP, end=LINE_CLEAR)
+
     lines_to_delete = next_lines_to_delete
     print(
         f"Step:{core.events_manager.step} Sim time:"
@@ -146,4 +148,3 @@ def print_simulation_data(core: desym.core.Simulation):
         + "{:4.4f}".format(callback_time_mean)
         + f" \n {tray_string}"
     )
-

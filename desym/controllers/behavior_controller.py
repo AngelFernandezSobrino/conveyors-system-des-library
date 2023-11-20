@@ -1,10 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Callable, Any
 
-import desym.objects.stopper.core
-from desym.objects.stopper.core import Stopper
-
 if TYPE_CHECKING:
+    import desym.objects.stopper.core
+    from desym.objects.stopper.core import Stopper
     import desym.objects.system
 
 import desym.helpers.timed_events_manager

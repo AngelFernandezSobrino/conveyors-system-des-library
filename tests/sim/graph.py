@@ -1,7 +1,9 @@
 from typing import TYPE_CHECKING, TypedDict
 
+from desym.objects.stopper.core import Stopper
+from desym.core import Simulation
+
 if TYPE_CHECKING:
-    from desym.objects.stopper.core import Stopper
     from desym.core import Simulation
 
 

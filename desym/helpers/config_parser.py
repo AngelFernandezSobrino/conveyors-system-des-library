@@ -4,9 +4,11 @@ import openpyxl as xl
 import itertools
 
 import pprint
+
 pp = pprint.PrettyPrinter(depth=4)
 
 if TYPE_CHECKING:
+    from desym.objects.stopper.core import StopperDescription
     from desym.objects.system import SystemDescription
 
 
@@ -30,7 +32,6 @@ class ConfigParser:
 
         conversion_types = [str(column_name.value) for column_name in conversions]
 
-        out_dict = {}
         for row in ws.rows:
             if row[0].row < 3:
                 continue
@@ -43,18 +44,17 @@ class ConfigParser:
                 if conversion_types[i] == 'str':
                     value = str(value)
 
-                if str(row[0].value) not in out_dict:
-                    out_dict[str(row[0].value)] = {}
+                if str(row[0].value) not in self.config:
+                    self.config[str(row[0].value)] = {} # type: ignore
 
                 if (i > 0 and column_names[i - 1] == column_names[i]) or (i < len(row) - 1 and column_names[i + 1] == column_names[i]):
-                    if column_names[i] not in out_dict[str(row[0].value)]:
-                        out_dict[str(row[0].value)][column_names[i]] = [value]
+                    if column_names[i] not in self.config[str(row[0].value)]:                        
+                        self.config[str(row[0].value)][column_names[i]] = [value] # type: ignore
                     else:
-                        out_dict[str(row[0].value)][column_names[i]] += [value]
+                        self.config[str(row[0].value)][column_names[i]] += [value] # type: ignore
                 else:
-                    out_dict[str(row[0].value)][column_names[i]] = value
+                    self.config[str(row[0].value)][column_names[i]] = value # type: ignore
 
-        self.config = out_dict
         self.config_available = True
 
 

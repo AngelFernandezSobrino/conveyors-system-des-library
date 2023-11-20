@@ -33,10 +33,11 @@ class TimedEventsManager:
         else:
             self.events_queue[step] = [event]
 
-    def run(self):
+    def run(self) -> bool:
         self.step += 1
         if self.step not in self.events_queue:
-            return
+            return False
         events = self.events_queue.pop(self.step)
         for event in events:
             event()
+        return True

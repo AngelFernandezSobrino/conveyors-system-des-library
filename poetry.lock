@@ -1306,6 +1306,18 @@ files = [
 ]
 
 [[package]]
+name = "types-openpyxl"
+version = "3.1.0.23"
+description = "Typing stubs for openpyxl"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "types-openpyxl-3.1.0.23.tar.gz", hash = "sha256:8fb81f8d53274206101c761b7e4cbfbd47b6116a185854728120df4d2ed753dc"},
+    {file = "types_openpyxl-3.1.0.23-py3-none-any.whl", hash = "sha256:879d60e80c2b88f09e76e51a1dd0e2567e429c9964022f3623bbb2258047807c"},
+]
+
+[[package]]
 name = "types-paho-mqtt"
 version = "1.6.0.6"
 description = "Typing stubs for paho-mqtt"
@@ -1407,4 +1419,4 @@ sweeps = ["sweeps (>=0.2.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.x"
-content-hash = "f14ff685cdf7790776bf3a34e7d1abc1ea13bde29bd280884378324e09237e7c"
+content-hash = "22b70bfba50ad23af1edb7f6b27e75f4dc54e80a2a7dc6063727d9107734b3fb"
