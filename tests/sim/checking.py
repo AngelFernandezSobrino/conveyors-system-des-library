@@ -32,25 +32,25 @@ def check_simulation_errors(core: desym.core.Simulation):
     # Loop over all stopper objects and check if any tray is located at two places at the same time
     tray_locations: Dict[str, list[str]] = {}
     for stopper in core.stoppers.values():
-        if stopper.input_tray:
-            if stopper.input_tray.id in tray_locations:
-                tray_locations[stopper.input_tray.id].append(
-                    stopper.stopper_id + " input"
+        if stopper.input_container:
+            if stopper.input_container.id in tray_locations:
+                tray_locations[stopper.input_container.id].append(
+                    stopper.id + " input"
                 )
             else:
-                tray_locations[stopper.input_tray.id] = [
-                    stopper.stopper_id + " input"
+                tray_locations[stopper.input_container.id] = [
+                    stopper.id + " input"
                 ]
         output = 0
         for tray in stopper.output_trays.values():
             if tray:
                 if tray.id in tray_locations:
                     tray_locations[tray.id].append(
-                        stopper.stopper_id + f" output {output}"
+                        stopper.id + f" output {output}"
                     )
                 else:
                     tray_locations[tray.id] = [
-                        stopper.stopper_id + f" output {output}"
+                        stopper.id + f" output {output}"
                     ]
             output += 1
 
@@ -92,7 +92,7 @@ def print_simulation_data(core: desym.core.Simulation):
     next_lines_to_delete = 2
     tray_string = ""
     for stopper in core.stoppers.values():
-        tray_string += f"Stopper {stopper.stopper_id} input: {stopper.input_tray.id if stopper.input_tray is not None else None } { [tray.id if tray is not None else None for tray in stopper.output_trays.values()]} \n "
+        tray_string += f"Stopper {stopper.id} input: {stopper.input_container.id if stopper.input_container is not None else None } { [tray.id if tray is not None else None for tray in stopper.output_trays.values()]} \n "
         next_lines_to_delete += 1
     global sim_time_max, sim_time_min, callback_time_max, callback_time_min, calc_mean_interval
     sim_time = (time_one - time_two) * 1000

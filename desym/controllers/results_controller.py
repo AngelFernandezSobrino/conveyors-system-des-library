@@ -86,16 +86,15 @@ class TimesResultsController(BaseResultsController):
         self.time_update_callback = time_update_callback
         self.busyness_update_callback = busyness_update_callback
 
-        self.time_vector: List[int] = []
-        self.times: Dict[str, StopperTimeResults] = {}
+        self.accumulated_times: Dict[str, StopperTimeResults] = {}
         self.previous_stoppers: Dict[Stopper.StopperId, PreviousData] = {}
         self.busyness: List[list] = [[0, 0]]
         self.system_description = system_description
         self.stopper_history: Dict[str, Dict[str, List[list]]] = {}
 
         for stopper_id, stopper_description in system_description.items():
-            self.times[stopper_id] = {"rest": 0, "request": 0, "move": {}}
-            self.times[stopper_id]["move"] = {
+            self.accumulated_times[stopper_id] = {"rest": 0, "request": 0, "move": {}}
+            self.accumulated_times[stopper_id]["move"] = {
                 v: 0 for v in stopper_description["destiny"]
             }
             self.previous_stoppers[stopper_id] = {
@@ -115,7 +114,6 @@ class TimesResultsController(BaseResultsController):
 
     def simulation_end(self, simulation, actual_time: int):
         self.update_all_times(simulation, actual_time)
-        self.time_vector = list(range(0, actual_time))
 
     def calculate_busyness(self, simulation: Simulation, step: int):
         if self.busyness[-1][0] != step:
@@ -136,32 +134,32 @@ class TimesResultsController(BaseResultsController):
                 self.time_update_callback(self, step)
 
     def update_times(self, stopper: Stopper, step: int):
-        if self.previous_stoppers[stopper.stopper_id]["state"]["rest"]:
-            self.times[stopper.stopper_id]["rest"] += (
-                step - self.previous_stoppers[stopper.stopper_id]["time"]
+        if self.previous_stoppers[stopper.id]["state"]["rest"]:
+            self.accumulated_times[stopper.id]["rest"] += (
+                step - self.previous_stoppers[stopper.id]["time"]
             )
 
-        if self.previous_stoppers[stopper.stopper_id]["state"]["request"]:
-            self.times[stopper.stopper_id]["request"] += (
-                step - self.previous_stoppers[stopper.stopper_id]["time"]
+        if self.previous_stoppers[stopper.id]["state"]["request"]:
+            self.accumulated_times[stopper.id]["request"] += (
+                step - self.previous_stoppers[stopper.id]["time"]
             )
 
         for destiny in stopper.behaviorInfo.output_stoppers_ids:
-            if self.previous_stoppers[stopper.stopper_id]["state"]["move"][destiny]:
-                self.times[stopper.stopper_id]["move"][destiny] += (
-                    step - self.previous_stoppers[stopper.stopper_id]["time"]
+            if self.previous_stoppers[stopper.id]["state"]["move"][destiny]:
+                self.accumulated_times[stopper.id]["move"][destiny] += (
+                    step - self.previous_stoppers[stopper.id]["time"]
                 )
 
-        self.previous_stoppers[stopper.stopper_id]["state"]["rest"] = deepcopy(
+        self.previous_stoppers[stopper.id]["state"]["rest"] = deepcopy(
             stopper.states.available
         )
-        self.previous_stoppers[stopper.stopper_id]["state"]["request"] = deepcopy(
+        self.previous_stoppers[stopper.id]["state"]["request"] = deepcopy(
             stopper.states.request
         )
-        self.previous_stoppers[stopper.stopper_id]["state"]["move"] = deepcopy(
+        self.previous_stoppers[stopper.id]["state"]["move"] = deepcopy(
             stopper.states.move
         )
-        self.previous_stoppers[stopper.stopper_id]["time"] = step
+        self.previous_stoppers[stopper.id]["time"] = step
         if self.time_update_callback:
             self.time_update_callback(self, step)
 

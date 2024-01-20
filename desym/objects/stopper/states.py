@@ -24,30 +24,26 @@ class State:
         self.available = True
         self.reserved = False
         self.request = False
-        self.move = {v: False for v in self.c.stopper_description["destiny"]}
+        self.move = {v: False for v in self.c.description["destiny"]}
 
         # The path is locked by the behavior controller
         self.management_stop = {
-            destiny: True
-            if self.c.stopper_description["default_locked"] == "True"
-            else False
-            for destiny in self.c.stopper_description["destiny"]
+            destiny: True if self.c.description["default_locked"] == "True" else False
+            for destiny in self.c.description["destiny"]
         }
 
-        self.graph_stop = {
-            destiny: False for destiny in self.c.stopper_description["destiny"]
-        }
+        self.graph_stop = {destiny: False for destiny in self.c.description["destiny"]}
 
     def go_move(self, destiny: Stopper.StopperId) -> None:
         if not self.c.simulation.stoppers[destiny].its_available():
             raise Exception(
-                f"Destiny not available in the destiny stopper {destiny} for the stopper {self.c.stopper_id}"
+                f"Destiny not available in the destiny stopper {destiny} for the stopper {self.c.id}"
             )
         self.c.output_events.reserve_destiny(destiny)
         self.request = False
         self.move[destiny] = True
-        self.c.output_trays[destiny] = self.c.input_tray
-        self.c.input_tray = None
+        self.c.output_trays[destiny] = self.c.input_container
+        self.c.input_container = None
         self.c.events_manager.push(
             Event(self.end_move, tuple(), {"destiny": destiny}),
             self.c.behaviorInfo.move_steps[destiny],
@@ -79,6 +75,8 @@ class State:
         self.c._state_change()
 
     def go_reserved(self) -> None:
+        if self.reserved:
+            raise Exception("Fatal Error: Stopper already reserved id {self.c.id}")
         self.available = False
         self.reserved = True
         self.c._state_change()

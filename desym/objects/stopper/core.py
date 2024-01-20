@@ -39,28 +39,26 @@ class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
 
     def __init__(
         self,
-        stopper_id: str,
-        stopper_description: StopperDescription,
-        simulation_description: desym.objects.system.SystemDescription,
+        id: str,
+        description: StopperDescription,
         simulation: desym.core.Simulation,
         behavior_controllers: Mapping[str, BehaviorControllerType],
         results_controllers: Mapping[str, ResultsControllerType],
         debug,
     ):
-        self.stopper_id = stopper_id
-        self.stopper_description = stopper_description
+        self.id = id
+        self.description = description
         self.behaviour_controllers = behavior_controllers
         self.results_controllers = results_controllers
-        self.simulation_description = simulation_description
 
         # Global pointers
         self.simulation = simulation
         self.events_manager = self.simulation.events_manager
 
         self.behaviorInfo = BehaviorInfo(
-            stopper_id,
-            stopper_description,
-            simulation_description,
+            id,
+            self.description,
+            self.simulation.description,
         )
 
         self.output_stoppers: list[Stopper] = []
@@ -68,12 +66,12 @@ class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
 
         # Stopper tray data
         self.output_trays: dict[Stopper.StopperId, Union[Container, None]] = {
-            v: None for v in self.stopper_description["destiny"]
+            v: None for v in self.description["destiny"]
         }
-        self.input_tray: Union[Container, None] = None
+        self.input_container: Union[Container, None] = None
 
         # Request time
-        self.tray_arrival_time = 0
+        self.input_step = 0
 
         # External functions behavior
         self.return_rest_functions: list[
@@ -84,14 +82,14 @@ class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
         ] = []
 
         for behavior_controller in behavior_controllers.values():
-            if self.stopper_id in behavior_controller.return_rest_functions:
+            if self.id in behavior_controller.return_rest_functions:
                 self.return_rest_functions = behavior_controller.return_rest_functions[
-                    self.stopper_id
+                    self.id
                 ]
 
-            if self.stopper_id in behavior_controller.check_request_functions:
+            if self.id in behavior_controller.check_request_functions:
                 self.check_requests_functions = (
-                    behavior_controller.check_request_functions[self.stopper_id]
+                    behavior_controller.check_request_functions[self.id]
                 )
 
         # Stopper composition objects
@@ -100,7 +98,7 @@ class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
         self.states: states.State = states.State(self)
 
     def __str__(self) -> str:
-        return f"Stopper {self.stopper_id}"
+        return f"Stopper {self.id}"
 
     def post_init(self):
         for output_stopper_id in self.behaviorInfo.output_stoppers_ids:

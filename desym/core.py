@@ -45,7 +45,7 @@ ResultsControllerType = TypeVar(
 class Simulation(Generic[BehaviorControllerType, ResultsControllerType]):
     def __init__(
         self,
-        system_description: desym.objects.system.SystemDescription,
+        description: desym.objects.system.SystemDescription,
         behavior_controllers: Mapping[str, BehaviorControllerType],
         results_controllers: Mapping[str, ResultsControllerType],
         callback_after_step_event: Callable[[Simulation], None] | None,
@@ -53,7 +53,7 @@ class Simulation(Generic[BehaviorControllerType, ResultsControllerType]):
         
         self.events_manager = TimedEventsManager()
         
-        self.system_description = system_description
+        self.description = description
         self.behavior_controllers = behavior_controllers
         self.results_controllers = results_controllers
 
@@ -74,13 +74,12 @@ class Simulation(Generic[BehaviorControllerType, ResultsControllerType]):
         ] = {}
         self.containers: list[Container] = []
 
-        for stopper_id, stopper_description in self.system_description.items():
+        for stopper_id, stopper_description in self.description.items():
             self.stoppers[stopper_id] = Stopper[
                 BehaviorControllerType, ResultsControllerType
             ](
                 stopper_id,
                 stopper_description,
-                self.system_description,
                 self,
                 behavior_controllers,
                 results_controllers,

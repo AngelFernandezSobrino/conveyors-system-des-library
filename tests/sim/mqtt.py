@@ -36,22 +36,22 @@ def send_data_to_mqtt(core: Simulation):
     ]
 
     for stopper in core.stoppers.values():
-        if stopper.input_tray is not None:
-            if stopper.input_tray.content:
-                item_string = f" T: {stopper.input_tray.content.item_type.value} S: {stopper.input_tray.content.state}"
+        if stopper.input_container is not None:
+            if stopper.input_container.content:
+                item_string = f" T: {stopper.input_container.content.item_type.value} S: {stopper.input_container.content.state}"
             else:
                 item_string = ""
             msg_list.append(
                 (
-                    f"desym/stopper/{stopper.stopper_id}/input",
-                    str(f"Id: {stopper.input_tray.id} {item_string}"),
+                    f"desym/stopper/{stopper.id}/input",
+                    str(f"Id: {stopper.input_container.id} {item_string}"),
                     0,
                     False,
                 )
             )
         else:
             msg_list.append(
-                (f"desym/stopper/{stopper.stopper_id}/input", None, 0, False)
+                (f"desym/stopper/{stopper.id}/input", None, 0, False)
             )
 
         for output_tray_id in stopper.output_trays:
@@ -62,7 +62,7 @@ def send_data_to_mqtt(core: Simulation):
                     item_string = ""
                 msg_list.append(
                     (
-                        f"desym/stopper/{stopper.stopper_id}/output/{output_tray_id}",
+                        f"desym/stopper/{stopper.id}/output/{output_tray_id}",
                         str(
                             f"Id: {stopper.output_trays[output_tray_id].id} {item_string}"
                         ),
@@ -73,7 +73,7 @@ def send_data_to_mqtt(core: Simulation):
             else:
                 msg_list.append(
                     (
-                        f"desym/stopper/{stopper.stopper_id}/output/{output_tray_id}",
+                        f"desym/stopper/{stopper.id}/output/{output_tray_id}",
                         None,
                         0,
                         False,

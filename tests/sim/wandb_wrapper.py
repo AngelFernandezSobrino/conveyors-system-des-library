@@ -42,7 +42,7 @@ def time_update_callback(
     results: desym.controllers.results_controller.TimesResultsController, step: int
 ):
     wandb_data_dict["results/times"] = {
-        key: results.times[key] for key in ["DIR04", "PT05", "PT06"]
+        key: results.accumulated_times[key] for key in ["DIR04", "PT05", "PT06"]
     }
 
 

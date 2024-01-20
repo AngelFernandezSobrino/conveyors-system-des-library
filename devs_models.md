@@ -10,24 +10,17 @@ delta ext transition function for external events
 
 delta int 
 
-# Destiny status atomic model
-
-X = {destiny_available, destiny_unavailable}
-Y = {available}
-S = {available, unavailable}
-
-
-# Buffer size one atomic model
+# Buffer size one with object transfer delay atomic model
 
 X = {destiny_available, reserve, object_input}
 Y = {available, object_output}
-S = {free, reserved, occupied}
+S = {free, reserved, occupied, transfering}
 s0 = free
 ta(free) = inf
-ta(occupied) = $delay
+ta(occupied) = inf
+ta(transfering) = $transfer_time
 
 delta_ext(free, object_input) = occupied
-
 delta_ext(reserved, object_input) = fatal_error
 
 delta_ext(occupied, destiny_available) = k

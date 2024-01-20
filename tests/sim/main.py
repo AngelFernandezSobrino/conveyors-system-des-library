@@ -1,6 +1,11 @@
+import argparse
 from statistics import mean
 import time
 import os
+from typing import List, Union
+from tests.sim.item import ProductTypeReferences
+
+import sys
 
 from tests.sim.logger import logger
 import logging
@@ -17,7 +22,24 @@ import tests.sim.behavior as custom_behaviour
 
 ## Config desym module logging level
 
-logging.getLogger("desym").setLevel(logging.INFO)
+parser = argparse.ArgumentParser(
+                    prog='ProgramName',
+                    description='What the program does',
+                    epilog='Text at the bottom of help')
+
+parser.add_argument('-v', '--verbose',
+                    action='store_true')  # on/off flag
+
+args = parser.parse_args()
+
+print(args.verbose)
+
+if args.verbose:
+    logging_level = logging.DEBUG
+else:
+    logging_level = logging.INFO
+
+logging.getLogger("desym").setLevel(logging_level)
 
 ## Simulation configuration
 
@@ -29,9 +51,9 @@ config_parser.parse("config_parser")
 
 wandb_enabled = False
 
-import tests.sim.wandb_wrapper as wandb_wrapper
+# import tests.sim.wandb_wrapper as wandb_wrapper
 
-wandb_wrapper.config.data = config_parser.config
+# wandb_wrapper.config.data = config_parser.config
 
 ## Configure simulation behavior
 
@@ -41,23 +63,23 @@ def production_update_callback(
     *args, **kwargs
 ) -> None:
     data_storage.production_update_callback(*args, **kwargs)
-    wandb_wrapper.production_update_callback(*args, **kwargs)
+    # wandb_wrapper.production_update_callback(*args, **kwargs)
 
 def time_update_callback(
     *args, **kwargs
 ):
     data_storage.time_update_callback(*args, **kwargs)
-    wandb_wrapper.time_update_callback(*args, **kwargs)
+    # wandb_wrapper.time_update_callback(*args, **kwargs)
 
 def busyness_update_callback(*args, **kwargs):
     data_storage.busyness_update_callback(*args, **kwargs)
-    wandb_wrapper.busyness_update_callback(*args, **kwargs)
+    # wandb_wrapper.busyness_update_callback(*args, **kwargs)
 
 
 results_production = results_controller.CounterResultsController(
     custom_behaviour.ProductTypeReferences, production_update_callback
 )
-results_busyness = results_controller.TimesResultsController(
+results_time = results_controller.TimesResultsController(
     config_parser.config,
     time_update_callback,
     busyness_update_callback,
@@ -86,7 +108,7 @@ sim_core = desym.core.Simulation[
 ](
     config_parser.config,
     {"baseline": behavior_baseline},
-    {"production": results_production, "busyness": results_busyness},
+    {"production": results_production, "busyness": results_time},
     step_callback,
 )
 
@@ -99,12 +121,12 @@ simulation_cycles_detector = graph.GraphAnalizer(sim_core)
 start = time.time()
 
 results_production.simulation_start(sim_core.stoppers, sim_core.events_manager.step)
-results_busyness.simulation_start(sim_core.stoppers, sim_core.events_manager.step)
+results_time.simulation_start(sim_core.stoppers, sim_core.events_manager.step)
 
 sim_core.sim_run_steps(settings.steps)
 
 results_production.simulation_end(sim_core.stoppers, sim_core.events_manager.step)
-results_busyness.simulation_end(sim_core.stoppers, sim_core.events_manager.step)
+results_time.simulation_end(sim_core.stoppers, sim_core.events_manager.step)
 
 
 
@@ -126,6 +148,41 @@ logger.info(
     f"Product {custom_behaviour.ProductTypeReferences.product_3.name}: {results_production.counters[custom_behaviour.ProductTypeReferences.product_3]}"
 )
 
-logger.info("Data results:")
+import csv
 
-logger.info(data_storage.data_dict)
+
+with open('data.csv', 'w') as f:
+
+    busyness_step = 0
+    production_step = {}
+    for index in ProductTypeReferences:
+        production_step[f"results/production/{index.name}"] = 0
+
+    writer = csv.writer(f)
+    writer.writerow(["step", "busyness", "production_1", "production_2", "production_3"])
+
+
+    for step in range(-1, settings.steps):
+        new_row: List[Union[float, None]] = [step]
+        write_row = False
+        if len(data_storage.data_dict["results/busyness"]) > busyness_step and data_storage.data_dict["results/busyness"][busyness_step][0] == step:
+            # logger.info(f"step: {step}, busyness: {data_storage.data_dict['results/busyness'][busyness_step][1]}")
+            new_row.append(data_storage.data_dict["results/busyness"][busyness_step][1])
+            busyness_step += 1
+            write_row = True
+        else:
+            new_row.append(None)
+
+        for index in ProductTypeReferences:
+            if len(data_storage.data_dict[f"results/production/{index.name}"]) > production_step[f"results/production/{index.name}"] and data_storage.data_dict[f"results/production/{index.name}"][production_step[f"results/production/{index.name}"]][0] == step:
+                new_row.append(data_storage.data_dict[f"results/production/{index.name}"][production_step[f"results/production/{index.name}"]][1])
+                # logger.info(f"step: {step}, production_1: "+ str(data_storage.data_dict[f"results/production/{index.name}"][production_step[f"results/production/{index.name}"]][1]))
+
+                production_step[f"results/production/{index.name}"] += 1
+                write_row = True
+            else:
+                new_row.append(None)
+        if write_row:
+            writer.writerow(new_row)
+
+

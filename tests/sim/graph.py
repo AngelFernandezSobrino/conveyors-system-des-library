@@ -32,16 +32,16 @@ class Cycle:
     def population(cycle):
         population = 0
         for i in range(len(cycle.stoppers)):
-            if cycle.core.stoppers[cycle.stoppers[i].stopper_id].input_tray:
+            if cycle.core.stoppers[cycle.stoppers[i].id].input_container:
                 population += 1
             if (i + 1) < len(cycle.stoppers):
-                if cycle.core.stoppers[cycle.stoppers[i].stopper_id].output_trays[
-                    cycle.stoppers[i + 1].stopper_id
+                if cycle.core.stoppers[cycle.stoppers[i].id].output_trays[
+                    cycle.stoppers[i + 1].id
                 ]:
                     population += 1
             else:
-                if cycle.core.stoppers[cycle.stoppers[i].stopper_id].output_trays[
-                    cycle.stoppers[0].stopper_id
+                if cycle.core.stoppers[cycle.stoppers[i].id].output_trays[
+                    cycle.stoppers[0].id
                 ]:
                     population += 1
 
@@ -55,7 +55,7 @@ class Cycle:
                     and system_stopper not in core.stoppers
                 ):
                     self.foreign_input_stoppers.append(
-                        {"stopper": system_stopper, "destiny_id": stopper.stopper_id}
+                        {"stopper": system_stopper, "destiny_id": stopper.id}
                     )
 
     def lock_cycle_stoppers(self):
@@ -109,12 +109,12 @@ class GraphAnalizer:
 
     def __find_cycles(self):
         for stopper in self.stoppers.values():
-            self.visited[stopper.stopper_id] = False
+            self.visited[stopper.id] = False
 
         self.__dfs(self.stoppers["PT01"])
 
     def __dfs(self, stopper: Stopper):
-        self.visited[stopper.stopper_id] = True
+        self.visited[stopper.id] = True
         self.path.append(stopper)
 
         for output_stopper in stopper.output_stoppers:
@@ -122,12 +122,12 @@ class GraphAnalizer:
                 cycle_start = self.path.index(output_stopper)
                 self.cycles.append(Cycle(self.path[cycle_start:], self.core))
             else:
-                if not self.visited[output_stopper.stopper_id]:
+                if not self.visited[output_stopper.id]:
                     self.__dfs(output_stopper)
             # No else clause is needed since we don't need to do anything if we have already visited the node.
 
         self.path.pop()
-        self.visited[stopper.stopper_id] = False
+        self.visited[stopper.id] = False
 
     # Calculate the consideration list. It has, for each stopper of the simulation, a dict for each input stopper with list of cycles where the stopper is present but the input stopper is not.
     def __calculate_consideration_list_for_inputs(self):
@@ -138,23 +138,23 @@ class GraphAnalizer:
                         input_stopper not in cycle.stoppers
                         and stopper in cycle.stoppers
                     ):
-                        if stopper.stopper_id not in self.inputs_cycles_to_check:
-                            self.inputs_cycles_to_check[stopper.stopper_id] = {}
+                        if stopper.id not in self.inputs_cycles_to_check:
+                            self.inputs_cycles_to_check[stopper.id] = {}
                         if (
-                            input_stopper.stopper_id
-                            not in self.inputs_cycles_to_check[stopper.stopper_id]
+                            input_stopper.id
+                            not in self.inputs_cycles_to_check[stopper.id]
                         ):
-                            self.inputs_cycles_to_check[stopper.stopper_id][
-                                input_stopper.stopper_id
+                            self.inputs_cycles_to_check[stopper.id][
+                                input_stopper.id
                             ] = [cycle]
                         elif (
                             cycle
-                            not in self.inputs_cycles_to_check[stopper.stopper_id][
-                                input_stopper.stopper_id
+                            not in self.inputs_cycles_to_check[stopper.id][
+                                input_stopper.id
                             ]
                         ):
-                            self.inputs_cycles_to_check[stopper.stopper_id][
-                                input_stopper.stopper_id
+                            self.inputs_cycles_to_check[stopper.id][
+                                input_stopper.id
                             ].append(cycle)
 
     # Calculate the consideration list. It has, for each stopper of the simulation, a dict for each output stopper with list of cycles where the output stopper is present but the stopper under consideration no.
@@ -166,23 +166,23 @@ class GraphAnalizer:
                         stopper not in cycle.stoppers
                         and output_stopper in cycle.stoppers
                     ):
-                        if stopper.stopper_id not in self.outputs_cycles_to_check:
-                            self.outputs_cycles_to_check[stopper.stopper_id] = {}
+                        if stopper.id not in self.outputs_cycles_to_check:
+                            self.outputs_cycles_to_check[stopper.id] = {}
                         if (
-                            output_stopper.stopper_id
-                            not in self.outputs_cycles_to_check[stopper.stopper_id]
+                            output_stopper.id
+                            not in self.outputs_cycles_to_check[stopper.id]
                         ):
-                            self.outputs_cycles_to_check[stopper.stopper_id][
-                                output_stopper.stopper_id
+                            self.outputs_cycles_to_check[stopper.id][
+                                output_stopper.id
                             ] = [cycle]
                         elif (
                             cycle
-                            not in self.outputs_cycles_to_check[stopper.stopper_id][
-                                output_stopper.stopper_id
+                            not in self.outputs_cycles_to_check[stopper.id][
+                                output_stopper.id
                             ]
                         ):
-                            self.outputs_cycles_to_check[stopper.stopper_id][
-                                output_stopper.stopper_id
+                            self.outputs_cycles_to_check[stopper.id][
+                                output_stopper.id
                             ].append(cycle)
 
     # It checks the population of the different cycles present in the graph representation of the simulation

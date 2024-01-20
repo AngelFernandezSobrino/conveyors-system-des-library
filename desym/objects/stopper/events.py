@@ -16,15 +16,15 @@ class InputEvents:
         self.c = core
 
     # Event to aknowledge that a tray is being sent to the stopper, used by the stopper to go to reserved state
-    def sending_tray(self, origin_id):
+    def sended(self):
         self.c.states.go_reserved()
 
     # Tray arrival event, used by the stopper to go to request state and manage tray data
-    def tray_arrival(self, tray: Container):
-        if self.c.input_tray is not None:
-            raise Exception("Input tray is not empty")
-        self.c.input_tray = tray
-        self.c.tray_arrival_time = self.c.events_manager.step
+    def arrival(self, container: Container):
+        if self.c.input_container is not None:
+            raise Exception("Fatal Error: Input container is not empty, tray lost, stopper id: {self.c.id}")
+        self.c.input_container = container
+        self.c.input_step = self.c.events_manager.step
         self.c.states.go_request()
 
     # Event to aknowledge that a destiny is becoming available again
@@ -73,7 +73,7 @@ class OutputEvents:
 
     # Used to reserve a destiny stopper for a tray to arrive
     def reserve_destiny(self, destiny):
-        self.c.simulation.stoppers[destiny].input_events.sending_tray(self.c.stopper_id)
+        self.c.simulation.stoppers[destiny].input_events.sended()
 
     # Used to send a tray to a destiny stopper
     def tray_send(self, destiny: Stopper.StopperId):
@@ -82,16 +82,16 @@ class OutputEvents:
             raise Exception("Output tray is empty")
 
         self.c.output_trays[destiny] = None
-        self.c.simulation.stoppers[destiny].input_events.tray_arrival(output_object)
+        self.c.simulation.stoppers[destiny].input_events.arrival(output_object)
 
     # Used to propagate that the destiny is again available
     def available_origins(self):
         input_ids_array = (
             self.c.behaviorInfo.input_stoppers_ids
-            if self.c.stopper_description["priority"] == 0
+            if self.c.description["priority"] == 0
             else reversed(self.c.behaviorInfo.input_stoppers_ids)
         )
         for origin in input_ids_array:
             self.c.simulation.stoppers[origin].input_events.destiny_available(
-                self.c.stopper_id
+                self.c.id
             )
