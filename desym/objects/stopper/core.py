@@ -34,7 +34,6 @@ ResultsControllerType = TypeVar(
 
 
 class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
-    
     StopperId = Union[str, str]
 
     def __init__(
@@ -51,7 +50,7 @@ class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
         self.behaviour_controllers = behavior_controllers
         self.results_controllers = results_controllers
 
-        # Global pointers
+        # Globals
         self.simulation = simulation
         self.events_manager = self.simulation.events_manager
 

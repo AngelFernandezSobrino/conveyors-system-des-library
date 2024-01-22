@@ -50,9 +50,8 @@ class Simulation(Generic[BehaviorControllerType, ResultsControllerType]):
         results_controllers: Mapping[str, ResultsControllerType],
         callback_after_step_event: Callable[[Simulation], None] | None,
     ) -> None:
-        
         self.events_manager = TimedEventsManager()
-        
+
         self.description = description
         self.behavior_controllers = behavior_controllers
         self.results_controllers = results_controllers
@@ -89,15 +88,16 @@ class Simulation(Generic[BehaviorControllerType, ResultsControllerType]):
         for stopper in self.stoppers.values():
             stopper.post_init()
 
-
     def sim_run_real_time_forever(self, real_time_step: float):
         try:
             while True:
                 start_time = time.time()
                 if self.events_manager.run() and self.callback_after_step_event:
                     self.callback_after_step_event(self)
-                
-                time.sleep(real_time_step - ((time.time() - start_time) % real_time_step))
+
+                time.sleep(
+                    real_time_step - ((time.time() - start_time) % real_time_step)
+                )
 
         except KeyboardInterrupt:
             res = input("Ctrl-c was pressed. Do you really want to exit? y/n ")
@@ -116,3 +116,15 @@ class Simulation(Generic[BehaviorControllerType, ResultsControllerType]):
         while self.events_manager.step < steps:
             if self.events_manager.run() and self.callback_after_step_event:
                 self.callback_after_step_event(self)
+
+    def sim_run_forever(self):
+        try:
+            while True:
+                if self.events_manager.run() and self.callback_after_step_event:
+                    self.callback_after_step_event(self)
+        except KeyboardInterrupt:
+            res = input("Ctrl-c was pressed. Do you really want to exit? y/n ")
+            if res == "y":
+                return
+            else:
+                self.sim_run_forever()
