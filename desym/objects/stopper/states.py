@@ -1,88 +1,80 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-from desym.helpers.timed_events_manager import Event
+import copy
+from enum import Enum
+from typing import TYPE_CHECKING, List
+
+from attr import dataclass
 
 
 if TYPE_CHECKING:
     from . import core
-    from .core import Stopper
-
-DestinyId = str
-
-# Stopper states class, implement the stopper state machine
-## States:
-# Available: The stopper is available to receive trays
-# Reserved: The stopper is reserved to receive a tray
-# Request: The stopper has a tray and is waiting for a destiny to be available
-# Move: The stopper is moving a tray to a destiny
 
 
-class State:
+@dataclass
+class States:
+    class Node(Enum):
+        REST = 1
+        RESERVED = 2
+        OCCUPIED = 3
+        SENDING = 4
+
+    class Send(Enum):
+        NOTHING = 1
+        ONGOING = 1
+        DELAY = 2
+
+    class Destiny(Enum):
+        AVAILABLE = 1
+        NOT_AVAILABLE = 2
+
+    class Control(Enum):
+        LOCKED = 1
+        UNLOCKED = 2
+
+    node: Node
+    sends: List[Send]
+    destinies: List[Destiny]
+    control: List[Control]
+
+
+class StateController:
     def __init__(self, core: core.Stopper) -> None:
         self.c = core
 
-        self.available = True
-        self.reserved = False
-        self.request = False
-        self.move = {v: False for v in self.c.description["destiny"]}
-
-        # The path is locked by the behavior controller
-        self.management_stop = {
-            destiny: True if self.c.description["default_locked"] == "True" else False
-            for destiny in self.c.description["destiny"]
-        }
-
-        self.graph_stop = {destiny: False for destiny in self.c.description["destiny"]}
-
-    def go_move(self, destiny: Stopper.StopperId) -> None:
-        if not self.c.simulation.stoppers[destiny].its_available():
-            raise Exception(
-                f"Destiny not available in the destiny stopper {destiny} for the stopper {self.c.id}"
-            )
-        self.c.output_events.reserve_destiny(destiny)
-        self.request = False
-        self.move[destiny] = True
-        self.c.output_trays[destiny] = self.c.input_container
-        self.c.input_container = None
-        self.c.events_manager.push(
-            Event(self.end_move, tuple(), {"destiny": destiny}),
-            self.c.behaviorInfo.move_steps[destiny],
+        self.state: States = States(
+            States.Node.REST,
+            [States.Send.NOTHING for _ in self.c.description["destiny"]],
+            [States.Destiny.AVAILABLE for _ in self.c.description["destiny"]],
+            [States.Control.UNLOCKED for _ in self.c.description["destiny"]],
         )
 
-        if self.c.behaviorInfo.default_stopped == 1:
-            self.management_stop[destiny] = True
+    def go_state(self, state: States) -> None:
+        prev_state = self.state
+        self.state = state
+        self.c.output_events.end_state(prev_state)
 
-        if self.c.behaviorInfo.move_behaviour[destiny] == 1:
-            self.c.events_manager.push(
-                Event(self.go_available, tuple(), {}),
-                self.c.behaviorInfo.return_available_steps[destiny],
-            )
-        if self.c.behaviorInfo.move_behaviour[destiny] == 0:
-            self.go_available()
-        self.c._state_change()
+        self.c.external_function(self)
 
-    def end_move(self, destiny: str) -> None:
-        self.move[destiny] = False
-        self.c.output_events.tray_send(destiny)
-        if self.c.behaviorInfo.move_behaviour == 3:
-            self.go_available()
-        self.c._state_change()
+        actual_state = copy.deepcopy(self.state)
+        match self.state:
+            case States(States.Node.OCCUPIED, sends, destinies):
+                for index, destiny in enumerate(destinies):
+                    if (
+                        destiny == States.Destiny.AVAILABLE
+                        and self.state.control[index] == States.Control.UNLOCKED
+                    ):
+                        actual_state.node = States.Node.SENDING
+                        actual_state.destinies[index] = States.Destiny.NOT_AVAILABLE
+                        actual_state.sends[index] = States.Send.ONGOING
+                        self.go_state(actual_state)
+            case States(States.Node.SENDING, sends, destinies):
+                for index, send in enumerate(sends):
+                    if send == States.Send.ONGOING:
+                        actual_state.node = States.Node.SENDING
+                        actual_state.sends[index] = States.Send.DELAY
+                        self.go_state(actual_state)
 
-    def go_available(self) -> None:
-        self.available = True
-        self.c._process_return_rest()
-        self.c.output_events.available_origins()
-        self.c._state_change()
-
-    def go_reserved(self) -> None:
-        if self.reserved:
-            raise Exception("Fatal Error: Stopper already reserved id {self.c.id}")
-        self.available = False
-        self.reserved = True
-        self.c._state_change()
-
-    def go_request(self) -> None:
-        self.reserved = False
-        self.request = True
-        self.c._check_request()
-        self.c._state_change()
+                    if send == States.Send.DELAY:
+                        actual_state.node = States.Node.REST
+                        actual_state.sends[index] = States.Send.NOTHING
+                        self.go_state(actual_state)

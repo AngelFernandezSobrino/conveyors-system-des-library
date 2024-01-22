@@ -26,6 +26,7 @@ black = { version = "^23.1a1", allow-prereleases = true }
 pre-commit = "^2.21.0"
 genbadge = { extras = ["all"], version = "^1.1.0" }
 poethepoet = "^0.18.1"
+ipykernel = "^6.29.0"
 
 [tool.poe.tasks]
 tests = "poetry run pytest"

@@ -1,8 +1,21 @@
 from __future__ import annotations
+from ast import Str
 import dataclasses
-from typing import Mapping, TypedDict, TYPE_CHECKING, Union, Dict, TypeVar, Generic
+from typing import (
+    Any,
+    Callable,
+    Mapping,
+    TypedDict,
+    TYPE_CHECKING,
+    Union,
+    Dict,
+    TypeVar,
+    Generic,
+)
+from desym.helpers.timed_events_manager import TimedEventsManager
 
 from desym.objects.container import Container
+from desym.objects.conveyor.core import Conveyor
 from . import events
 from . import states
 
@@ -41,18 +54,18 @@ class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
         id: str,
         description: StopperDescription,
         simulation: desym.core.Simulation,
-        behavior_controllers: Mapping[str, BehaviorControllerType],
-        results_controllers: Mapping[str, ResultsControllerType],
+        external_function: Callable[..., Any],
         debug,
     ):
         self.id = id
         self.description = description
-        self.behaviour_controllers = behavior_controllers
-        self.results_controllers = results_controllers
+
+        # External function to emit events to extenal system
+        self.external_function: Callable[..., Any] = external_function
 
         # Globals
-        self.simulation = simulation
-        self.events_manager = self.simulation.events_manager
+        self.simulation: desym.core.Simulation = simulation
+        self.events_manager: TimedEventsManager = self.simulation.events_manager
 
         self.behaviorInfo = BehaviorInfo(
             id,
@@ -60,91 +73,30 @@ class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
             self.simulation.description,
         )
 
-        self.output_stoppers: list[Stopper] = []
-        self.input_stoppers: list[Stopper] = []
+        self.output_conveyors: list[Conveyor] = []
+        self.input_conveyors: list[Conveyor] = []
 
-        # Stopper tray data
-        self.output_trays: dict[Stopper.StopperId, Union[Container, None]] = {
-            v: None for v in self.description["destiny"]
-        }
-        self.input_container: Union[Container, None] = None
+        # Container storage pointer
+        self.container: Container | None = None
 
         # Request time
         self.input_step = 0
 
-        # External functions behavior
-        self.return_rest_functions: list[
-            desym.controllers.behavior_controller.ParametrizedFunction
-        ] = []
-        self.check_requests_functions: list[
-            desym.controllers.behavior_controller.ParametrizedFunction
-        ] = []
-
-        for behavior_controller in behavior_controllers.values():
-            if self.id in behavior_controller.return_rest_functions:
-                self.return_rest_functions = behavior_controller.return_rest_functions[
-                    self.id
-                ]
-
-            if self.id in behavior_controller.check_request_functions:
-                self.check_requests_functions = (
-                    behavior_controller.check_request_functions[self.id]
-                )
-
         # Stopper composition objects
         self.input_events: events.InputEvents = events.InputEvents(self)
         self.output_events: events.OutputEvents = events.OutputEvents(self)
-        self.states: states.State = states.State(self)
+        self.states: states.StateController = states.StateController(self)
 
     def __str__(self) -> str:
         return f"Stopper {self.id}"
 
-    def post_init(self):
-        for output_stopper_id in self.behaviorInfo.output_stoppers_ids:
-            if not len(self.output_stoppers):
-                self.output_stoppers = [self.simulation.stoppers[output_stopper_id]]
-            else:
-                self.output_stoppers += [self.simulation.stoppers[output_stopper_id]]
+    def set_input_conveyors(self, input_conveyor: Conveyor) -> None:
+        if input_conveyor not in self.input_conveyors:
+            self.input_conveyors.append(input_conveyor)
 
-        for input_stopper_id in self.behaviorInfo.input_stoppers_ids:
-            if not len(self.input_stoppers):
-                self.input_stoppers = [self.simulation.stoppers[input_stopper_id]]
-            else:
-                self.input_stoppers += [self.simulation.stoppers[input_stopper_id]]
-
-    def _check_request(self):
-        if not self.states.request:
-            return
-
-        for behavior_controller in self.check_requests_functions:
-            behavior_controller(self)
-
-        self._check_move()
-
-    def _check_move(self):
-        if not self.states.request:
-            return
-        for destiny in self.behaviorInfo.output_stoppers_ids:
-            if not self.states.management_stop[
-                destiny
-            ] and self._check_available_destiny(destiny):
-                self.states.go_move(destiny)
-                return
-
-    def its_available(self) -> bool:
-        return self.states.available
-
-    def _check_available_destiny(self, destiny):
-        return self.simulation.stoppers[destiny].its_available()
-
-    def _process_return_rest(self):
-        for return_rest_function in self.return_rest_functions:
-            return_rest_function(self)
-
-    # Results helpers functions
-    def _state_change(self):
-        for results_controller in self.results_controllers.values():
-            results_controller.status_change(self, self.events_manager.step)
+    def set_output_conveyors(self, output_conveyor: Conveyor) -> None:
+        if output_conveyor not in self.output_conveyors:
+            self.output_conveyors.append(output_conveyor)
 
 
 class BehaviorInfo:

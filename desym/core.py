@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import (
+    Any,
     Callable,
     Dict,
     Mapping,
@@ -13,6 +14,7 @@ from typing import (
 import time
 
 from desym.helpers.timed_events_manager import Event, TimedEventsManager
+from desym.objects.conveyor.core import Conveyor, ConveyorDescription
 from desym.objects.stopper.core import Stopper
 from desym.objects.container import Container
 
@@ -68,10 +70,13 @@ class Simulation(Generic[BehaviorControllerType, ResultsControllerType]):
                         step,
                     )
 
+        # Build simulation graph
+
         self.stoppers: dict[
             Stopper.StopperId, Stopper[BehaviorControllerType, ResultsControllerType]
         ] = {}
-        self.containers: list[Container] = []
+
+        self.conveyors: dict[Conveyor.ConveyorId, Conveyor] = {}
 
         for stopper_id, stopper_description in self.description.items():
             self.stoppers[stopper_id] = Stopper[
@@ -82,11 +87,44 @@ class Simulation(Generic[BehaviorControllerType, ResultsControllerType]):
                 self,
                 behavior_controllers,
                 results_controllers,
+                external_function,
                 False,
             )
 
-        for stopper in self.stoppers.values():
-            stopper.post_init()
+        for stopper_id, stopper_description in self.description.items():
+            for destiny_stopper_index, destiny_stopper_id in enumerate(
+                stopper_description["destiny"]
+            ):
+                if f"{stopper_id}_{destiny_stopper_id}" not in self.conveyors:
+                    self.conveyors["{stopper_id}_{destiny_stopper_id}"] = Conveyor(
+                        f"{stopper_id}_{destiny_stopper_id}",
+                        ConveyorDescription(
+                            origin_id=stopper_id,
+                            destiny_id=destiny_stopper_id,
+                            steps=stopper_description["steps"][destiny_stopper_index],
+                        ),
+                        self,
+                        False,
+                    )
+
+                    self.conveyors["{stopper_id}_{destiny_stopper_id}"].set_origin(
+                        self.stoppers[stopper_id]
+                    )
+
+                    self.conveyors["{stopper_id}_{destiny_stopper_id}"].set_destiny(
+                        self.stoppers[destiny_stopper_id]
+                    )
+
+                    self.stoppers[stopper_id].set_output_conveyors(
+                        self.conveyors["{stopper_id}_{destiny_stopper_id}"]
+                    )
+
+                    self.stoppers[destiny_stopper_id].set_input_conveyors(
+                        self.conveyors["{stopper_id}_{destiny_stopper_id}"]
+                    )
+
+        # List with all the container in the system
+        self.containers: list[Container] = []
 
     def sim_run_real_time_forever(self, real_time_step: float):
         try:

@@ -1,8 +1,13 @@
 from __future__ import annotations
+import copy
 from typing import TYPE_CHECKING
+
+from wandb import _set_internal_process
 
 
 from desym.objects.container import Container
+from desym.objects.conveyor.core import Conveyor
+from desym.objects.stopper.states import States
 
 if TYPE_CHECKING:
     from . import core
@@ -15,55 +20,63 @@ class InputEvents:
     def __init__(self, core: core.Stopper) -> None:
         self.c = core
 
-    # Event to aknowledge that a tray is being sent to the stopper, used by the stopper to go to reserved state
-    def sended(self):
-        self.c.states.go_reserved()
+    def input(self, container: Container) -> None:
+        actual_state = copy.deepcopy(self.c.states.state)
+        match self.c.states.state:
+            case States.Node.RESERVED:
+                actual_state.node = States.Node.OCCUPIED
+                self.c.states.go_state(actual_state)
+            case States.Node.RESERVED, States.Node.SENDING, States.Node.OCCUPIED:
+                raise Exception(
+                    f"Fatal error: Actual state is {self.c.states.state}, input event is not allowed"
+                )
+            case _:
+                raise Exception(
+                    f"Fatal error: Unknown state {self.c.states.state} in stopper {self.c.id}"
+                )
 
-    # Tray arrival event, used by the stopper to go to request state and manage tray data
-    def arrival(self, container: Container):
-        if self.c.input_container is not None:
-            raise Exception("Fatal Error: Input container is not empty, tray lost, stopper id: {self.c.id}")
-        self.c.input_container = container
-        self.c.input_step = self.c.events_manager.step
-        self.c.states.go_request()
+    def reserve(self) -> None:
+        actual_state = copy.deepcopy(self.c.states.state)
+        match self.c.states.state:
+            case States.Node.REST:
+                actual_state.node = States.Node.RESERVED
+                self.c.states.go_state(actual_state)
+            case States.Node.RESERVED, States.Node.OCCUPIED, States.Node.SENDING:
+                raise Exception(
+                    f"Fatal error: Actual state is {self.c.states.state}, reserve event is not allowed"
+                )
+            case _:
+                raise Exception(
+                    f"Fatal error: Unknown state {self.c.states.state} in stopper {self.c.id}"
+                )
 
-    # Event to aknowledge that a destiny is becoming available again
-    def destiny_available(self, destiny_id):
-        if self.c.states.request:
-            self.c._check_move()
+    def destiny_available(self, conveyor_id: Conveyor.ConeyorId) -> None:
+        actual_state = copy.deepcopy(self.c.states.state)
+        for index, conveyor in enumerate(self.c.output_conveyors):
+            if conveyor.id == conveyor_id:
+                actual_state.destinies[index] = States.Destiny.AVAILABLE
+                self.c.states.go_state(actual_state)
 
-    # Externl event to stop tray movement from behavior controller
-    def lock(self, output_ids: list[str] = [], all: bool = False):
-        if all:
-            for output_id in self.c.behaviorInfo.output_stoppers_ids:
-                self.c.states.management_stop[output_id] = True
-            return
-        for output_id in output_ids:
-            self.c.states.management_stop[output_id] = True
+    def destiny_not_available(self, conveyor_id: Conveyor.ConeyorId) -> None:
+        actual_state = copy.deepcopy(self.c.states.state)
+        for index, conveyor in enumerate(self.c.output_conveyors):
+            if conveyor.id == conveyor_id:
+                actual_state.destinies[index] = States.Destiny.NOT_AVAILABLE
+                self.c.states.go_state(actual_state)
 
-    def unlock(self, output_ids: list[str] = [], all: bool = False):
-        state_changed = False
-        if all:
-            for output_id in self.c.behaviorInfo.output_stoppers_ids:
-                if self.c.states.management_stop[output_id]:
-                    self.c.states.management_stop[output_id] = False
-                    state_changed = True
-        else:
-            for output_id in output_ids:
-                if self.c.states.management_stop[output_id]:
-                    self.c.states.management_stop[output_id] = False
-                    state_changed = True
+    def control_lock(self, conveyor_id: Conveyor.ConeyorId) -> None:
+        actual_state = copy.deepcopy(self.c.states.state)
+        for index, conveyor in enumerate(self.c.output_conveyors):
+            if conveyor.id == conveyor_id:
+                actual_state.control[index] = States.Control.LOCKED
+                self.c.states.go_state(actual_state)
 
-        if state_changed:
-            self.c._check_move()
-
-    def graph_lock(self, output_ids: list[str] = []):
-        for output_id in output_ids:
-            self.c.states.graph_stop[output_id] = True
-
-    def graph_unlock(self, output_ids: list[str] = []):
-        for output_id in output_ids:
-            self.c.states.graph_stop[output_id] = False
+    def control_unlock(self, conveyor_id: Conveyor.ConeyorId) -> None:
+        actual_state = copy.deepcopy(self.c.states.state)
+        for index, conveyor in enumerate(self.c.output_conveyors):
+            if conveyor.id == conveyor_id:
+                actual_state.control[index] = States.Control.UNLOCKED
+                self.c.states.go_state(actual_state)
 
 
 # Output events class, used by the stopper to send events to other stoppers
@@ -71,27 +84,44 @@ class OutputEvents:
     def __init__(self, core: core.Stopper) -> None:
         self.c = core
 
-    # Used to reserve a destiny stopper for a tray to arrive
-    def reserve_destiny(self, destiny):
-        self.c.simulation.stoppers[destiny].input_events.sended()
+    def not_available(self):
+        for conveyor in self.c.input_conveyors:
+            conveyor.input_events.destiny_not_available()
 
-    # Used to send a tray to a destiny stopper
-    def tray_send(self, destiny: Stopper.StopperId):
-        output_object = self.c.output_trays[destiny]
-        if output_object is None:
-            raise Exception("Output tray is empty")
+    def available(self):
+        for conveyor in self.c.input_conveyors:
+            conveyor.input_events.destiny_available()
 
-        self.c.output_trays[destiny] = None
-        self.c.simulation.stoppers[destiny].input_events.arrival(output_object)
+    def output(self, index: int):
+        if self.c.container is None:
+            raise Exception("Fatal Error: Tray is None, WTF")
+        self.c.output_conveyors[index].input_events.input()
 
-    # Used to propagate that the destiny is again available
-    def available_origins(self):
-        input_ids_array = (
-            self.c.behaviorInfo.input_stoppers_ids
-            if self.c.description["priority"] == 0
-            else reversed(self.c.behaviorInfo.input_stoppers_ids)
-        )
-        for origin in input_ids_array:
-            self.c.simulation.stoppers[origin].input_events.destiny_available(
-                self.c.id
-            )
+    def moving(self, index: int):
+        if self.c.container is None:
+            raise Exception("Fatal Error: Tray is None, WTF")
+        container = self.c.container
+        self.c.container = None
+        self.c.output_conveyors[index].input_events.moving(container)
+
+    def end_state(self, old_state: States):
+        if (
+            old_state.node == States.Node.REST
+            and old_state.node != self.c.states.state.node
+        ):
+            self.not_available()
+        if (
+            old_state.node == States.Node.OCCUPIED
+            and old_state.node != self.c.states.state.node
+        ):
+            for index, send in enumerate(self.c.states.state.sends):
+                if send == States.Send.ONGOING:
+                    self.output(index)
+        if (
+            old_state.node == States.Node.SENDING
+            and old_state.node != self.c.states.state.node
+        ):
+            for index, send in enumerate(old_state.sends):
+                if send == States.Send.DELAY:
+                    self.moving(index)
+            self.available()
