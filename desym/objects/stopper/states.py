@@ -1,8 +1,10 @@
 import copy
 from enum import Enum
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Dict
 
 from attr import dataclass
+
+from desym.objects.stopper import StopperId
 
 
 if TYPE_CHECKING:
@@ -31,9 +33,9 @@ class States:
         UNLOCKED = 2
 
     node: Node
-    sends: List[Send]
-    destinies: List[Destiny]
-    control: List[Control]
+    sends: Dict[StopperId, Send]
+    destinies: Dict[StopperId, Destiny]
+    control: Dict[StopperId, Control]
 
 
 class StateController:
@@ -42,9 +44,18 @@ class StateController:
 
         self.state: States = States(
             States.Node.REST,
-            [States.Send.NOTHING for _ in self.c.description["destiny"]],
-            [States.Destiny.AVAILABLE for _ in self.c.description["destiny"]],
-            [States.Control.UNLOCKED for _ in self.c.description["destiny"]],
+            {
+                destinyId: States.Send.NOTHING
+                for destinyId in self.c.description["destiny"]
+            },
+            {
+                destinyId: States.Destiny.AVAILABLE
+                for destinyId in self.c.description["destiny"]
+            },
+            {
+                destinyId: States.Control.UNLOCKED
+                for destinyId in self.c.description["destiny"]
+            },
         )
 
     def go_state(self, state: States) -> None:
@@ -58,23 +69,23 @@ class StateController:
         actual_state = copy.deepcopy(self.state)
         match self.state:
             case States(States.Node.OCCUPIED, sends, destinies):
-                for index, destiny in enumerate(destinies):
+                for destinyId, destiny in destinies.items():
                     if (
                         destiny == States.Destiny.AVAILABLE
-                        and self.state.control[index] == States.Control.UNLOCKED
+                        and self.state.control[destinyId] == States.Control.UNLOCKED
                     ):
                         actual_state.node = States.Node.SENDING
-                        actual_state.destinies[index] = States.Destiny.NOT_AVAILABLE
-                        actual_state.sends[index] = States.Send.ONGOING
+                        actual_state.destinies[destinyId] = States.Destiny.NOT_AVAILABLE
+                        actual_state.sends[destinyId] = States.Send.ONGOING
                         self.go_state(actual_state)
             case States(States.Node.SENDING, sends, destinies):
-                for index, send in enumerate(sends):
+                for destinyId, send in destinies.items():
                     if send == States.Send.ONGOING:
                         actual_state.node = States.Node.SENDING
-                        actual_state.sends[index] = States.Send.DELAY
+                        actual_state.sends[destinyId] = States.Send.DELAY
                         self.go_state(actual_state)
 
                     if send == States.Send.DELAY:
                         actual_state.node = States.Node.REST
-                        actual_state.sends[index] = States.Send.NOTHING
+                        actual_state.sends[destinyId] = States.Send.NOTHING
                         self.go_state(actual_state)

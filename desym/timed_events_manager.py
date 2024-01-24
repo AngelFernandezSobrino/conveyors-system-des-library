@@ -5,7 +5,7 @@ Step = int
 
 
 class CustomEventListener:
-    def __init__(self, callable: typing.Callable, args: tuple, kwargs: dict):
+    def __init__(self, callable: typing.Callable, args: tuple = (), kwargs: dict = {}):
         self.callable = callable
         self.args = args
         self.kwargs = kwargs

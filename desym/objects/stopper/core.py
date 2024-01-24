@@ -1,11 +1,15 @@
 from typing import (
+    Dict,
+    Generic,
+    TypeVar,
     TypedDict,
     TYPE_CHECKING,
-    Union,
 )
 
 from . import events
 from . import states
+
+import desym.objects.stopper
 
 if TYPE_CHECKING:
     from desym.objects.container import Container
@@ -18,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class StopperDescription(TypedDict):
-    destiny: list[desym.objects.stopper.TypeId]
+    destiny: list[desym.objects.stopper.StopperId]
     steps: list[int]
     move_behaviour: list[str]
     rest_steps: list[int]
@@ -26,10 +30,13 @@ class StopperDescription(TypedDict):
     priority: int
 
 
-class Stopper:
+ContentType = TypeVar("ContentType")
+
+
+class Stopper(Generic[ContentType]):
     def __init__(
         self,
-        id: str,
+        id: desym.objects.stopper.StopperId,
         description: StopperDescription,
         simulation: desym.core.Simulation,
         external_events_controller: StopperExternalFunctionController,
@@ -51,11 +58,11 @@ class Stopper:
             self.simulation.description,
         )
 
-        self.output_conveyors: list[Conveyor] = []
-        self.input_conveyors: list[Conveyor] = []
+        self.output_conveyors: Dict[desym.objects.stopper.StopperId, Conveyor] = {}
+        self.input_conveyors: Dict[desym.objects.stopper.StopperId, Conveyor] = {}
 
         # Container storage pointer
-        self.container: Container | None = None
+        self.container: Container[ContentType] | None = None
 
         # Request time
         self.input_step = 0
@@ -68,13 +75,21 @@ class Stopper:
     def __str__(self) -> str:
         return f"Stopper {self.id}"
 
-    def set_input_conveyors(self, input_conveyor: Conveyor) -> None:
+    def set_input_conveyors(
+        self,
+        input_conveyor: Conveyor,
+        origin_stopper_id: desym.objects.stopper.StopperId,
+    ) -> None:
         if input_conveyor not in self.input_conveyors:
-            self.input_conveyors.append(input_conveyor)
+            self.input_conveyors[origin_stopper_id] = input_conveyor
 
-    def set_output_conveyors(self, output_conveyor: Conveyor) -> None:
+    def set_output_conveyors(
+        self,
+        output_conveyor: Conveyor,
+        destiny_stopper_id: desym.objects.stopper.StopperId,
+    ) -> None:
         if output_conveyor not in self.output_conveyors:
-            self.output_conveyors.append(output_conveyor)
+            self.output_conveyors[destiny_stopper_id] = output_conveyor
 
 
 class BehaviorInfo:
@@ -93,7 +108,7 @@ class BehaviorInfo:
             self.output_stoppers_ids[k]: v
             for k, v in enumerate(stopper_description["move_behaviour"])
         }
-        self.input_stoppers_ids: list[desym.objects.stopper.TypeId] = []
+        self.input_stoppers_ids: list[desym.objects.stopper.StopperId] = []
         for external_stopper_id, stopper_info in simulation_description.items():
             if stopper_id in stopper_info["destiny"]:
                 self.input_stoppers_ids += [external_stopper_id]

@@ -1,10 +1,5 @@
 from __future__ import annotations
-from typing import (
-    Callable,
-    TYPE_CHECKING,
-    TypeVar,
-    Generic,
-)
+from typing import Callable, TYPE_CHECKING
 
 import time
 
@@ -24,6 +19,7 @@ from desym.objects.container import Container
 if TYPE_CHECKING:
     import desym.objects.system
     import desym.objects.stopper
+    import desym.objects.conveyor
 
 
 import logging
@@ -40,7 +36,7 @@ class Simulation:
         self,
         description: desym.objects.system.SystemDescription,
         stopper_external_events_controller: dict[
-            desym.objects.stopper.TypeId, StopperExternalFunctionController
+            desym.objects.stopper.StopperId, StopperExternalFunctionController
         ],
         system_external_events: dict[Step, list[CustomEventListener]],
         callback_after_step_event: Callable[[Simulation], None] | None,
@@ -59,9 +55,9 @@ class Simulation:
 
         # Build simulation graph
 
-        self.stoppers: dict[desym.objects.stopper.TypeId, Stopper] = {}
+        self.stoppers: dict[desym.objects.stopper.StopperId, Stopper] = {}
 
-        self.conveyors: dict[Conveyor.ConveyorId, Conveyor] = {}
+        self.conveyors: dict[desym.objects.conveyor.ConveyorId, Conveyor] = {}
 
         for stopper_id, stopper_description in self.description.items():
             self.stoppers[stopper_id] = Stopper(
@@ -97,11 +93,12 @@ class Simulation:
                     )
 
                     self.stoppers[stopper_id].set_output_conveyors(
-                        self.conveyors["{stopper_id}_{destiny_stopper_id}"]
+                        self.conveyors["{stopper_id}_{destiny_stopper_id}"],
+                        destiny_stopper_id,
                     )
 
                     self.stoppers[destiny_stopper_id].set_input_conveyors(
-                        self.conveyors["{stopper_id}_{destiny_stopper_id}"]
+                        self.conveyors["{stopper_id}_{destiny_stopper_id}"], stopper_id
                     )
 
         # List with all the container in the system

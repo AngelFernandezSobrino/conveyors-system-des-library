@@ -1,4 +1,3 @@
-
 from enum import Enum
 from typing import Any
 
@@ -8,8 +7,14 @@ class ProductTypeReferences(Enum):
     product_2 = "802002"
     product_3 = "802003"
 
-class Product():
-    def __init__(self, id: str, type: ProductTypeReferences, data: Any, state: str = "0"):
+
+TypeId = str
+
+
+class Product:
+    def __init__(
+        self, id: TypeId, type: ProductTypeReferences, data: Any, state: str = "0"
+    ):
         self.id = id
         self.state = state
         self.data = data

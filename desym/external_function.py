@@ -10,13 +10,13 @@ if TYPE_CHECKING:
 class StopperExternalFunctionController:
     def __init__(self):
         self.functions_repository: dict[
-            desym.objects.stopper.TypeId,
+            desym.objects.stopper.StopperId,
             list[desym.timed_events_manager.CustomEventListener],
         ] = {}
 
     def register_event(
         self,
-        stopper_id: desym.objects.stopper.TypeId,
+        stopper_id: desym.objects.stopper.StopperId,
         event: desym.timed_events_manager.CustomEventListener,
     ):
         if stopper_id not in self.functions_repository:

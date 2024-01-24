@@ -1,14 +1,9 @@
-from __future__ import annotations
 from typing import TYPE_CHECKING
-
-from numpy import mat
-
 
 if TYPE_CHECKING:
     from . import core
-    from desym.objects.stopper.core import Stopper
-    from desym.objects.container import Container
-    from desym.objects.conveyor.states import States
+    from .states import States
+    import desym.objects.container
 
 # This classes implement the events connections of the stoppers to other stoppers and to the behavior controller
 
@@ -56,7 +51,7 @@ class InputEvents:
                     f"Fatal error: Unknown state {self.c.states.state} in conveyor {self.c.id}"
                 )
 
-    def moving(self, container: Container) -> None:
+    def moving(self, container: desym.objects.container.Container) -> None:
         match self.c.states.state:
             case States.NOT_AVAILABLE_BY_MOVING:
                 self.c.container = container

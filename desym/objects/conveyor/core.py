@@ -1,30 +1,27 @@
-from __future__ import annotations
-from typing import TypedDict, TYPE_CHECKING, Union
+from typing import TypedDict, TYPE_CHECKING
 
 from desym.objects.container import Container
-from . import events
-from . import states
+from . import events, states
 
 if TYPE_CHECKING:
     import desym.objects.system
     import desym.objects.stopper.core
     import desym.timed_events_manager
+    import desym.objects.conveyor
 
 import desym.core
 
 
 class ConveyorDescription(TypedDict):
-    origin_id: desym.objects.stopper.TypeId
-    destiny_id: desym.objects.stopper.TypeId
+    origin_id: desym.objects.stopper.StopperId
+    destiny_id: desym.objects.stopper.StopperId
     steps: int
 
 
 class Conveyor:
-    ConveyorId = Union[str, str]
-
     def __init__(
         self,
-        id: str,
+        id: desym.objects.conveyor.ConveyorId,
         description: ConveyorDescription,
         simulation: desym.core.Simulation,
         debug,

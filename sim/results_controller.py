@@ -1,5 +1,16 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Callable, Hashable, Iterable, Optional, TypeVar, TypedDict, Dict, List
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Hashable,
+    Iterable,
+    Optional,
+    TypeVar,
+    TypedDict,
+    Dict,
+    List,
+)
 
 from enum import Enum
 from copy import deepcopy
@@ -43,7 +54,13 @@ class BaseResultsController:
 
 
 class CounterResultsController(BaseResultsController):
-    def __init__(self, counters: Any, data_change_callback: Optional[Callable[[CounterResultsController, Any, int], None]] = None):
+    def __init__(
+        self,
+        counters: Any,
+        data_change_callback: Optional[
+            Callable[[CounterResultsController, Any, int], None]
+        ] = None,
+    ):
         super().__init__()
         self.data_change_callback = data_change_callback
         self.counter_indexes = counters
@@ -59,7 +76,9 @@ class CounterResultsController(BaseResultsController):
 
     def simulation_start(self, simulation, step: int):
         for counter_index in self.counter_indexes:
-            self.counters_timeseries[counter_index].append([step, self.counters[counter_index]])
+            self.counters_timeseries[counter_index].append(
+                [step, self.counters[counter_index]]
+            )
             if self.data_change_callback:
                 self.data_change_callback(self, counter_index, step)
 

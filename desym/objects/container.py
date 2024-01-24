@@ -1,17 +1,22 @@
-from typing import Any
+from calendar import c
+from typing import Generic, TypeVar
 
-class Container:
+ContentType = TypeVar("ContentType")
 
-    def __init__(self, id: str, content: Any = None):
+TypeId = str
+
+
+class Container(Generic[ContentType]):
+    def __init__(self, id: str, content: ContentType | None = None):
         self.id = id
         self.content = content
 
     def __str__(self) -> str:
         return f"Tray {self.id}{f' with {self.content}' if self.content else ''}"
 
-    def load(self, content) -> bool:
+    def load(self, content: ContentType) -> bool:
         if self.content:
-            return False
+            raise Exception("Container is already loaded")
         self.content = content
         return True
 

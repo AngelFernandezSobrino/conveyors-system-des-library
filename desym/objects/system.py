@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from desym.objects.stopper.core import Stopper
 
 SystemDescription = Dict[
-    desym.objects.stopper.TypeId, desym.objects.stopper.core.StopperDescription
+    desym.objects.stopper.StopperId, desym.objects.stopper.core.StopperDescription
 ]
 
-SimulationData = Dict[desym.objects.stopper.TypeId, Stopper]
+SimulationData = Dict[desym.objects.stopper.StopperId, Stopper]

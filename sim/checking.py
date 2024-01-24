@@ -1,12 +1,18 @@
-from typing import TYPE_CHECKING, Dict
+from tkinter import Radiobutton
+from typing import TYPE_CHECKING, Set
 
-import tests.sim.settings as settings
-from tests.sim.logger import logger
+from sympy import E
+import sim
+
+import sim.settings as settings
+from sim.logger import logger
 
 import desym.core
 
 if TYPE_CHECKING:
-    from tests.sim.item import Product
+    from sim.item import Product
+    import desym.objects.container
+    import sim.item
 
 from math import fsum
 import time
@@ -30,61 +36,38 @@ lines_to_delete = 0
 
 def check_simulation_errors(core: desym.core.Simulation):
     # Loop over all stopper objects and check if any tray is located at two places at the same time
-    tray_locations: Dict[str, list[str]] = {}
+    tray_locations: Set[desym.objects.container.TypeId] = set()
     for stopper in core.stoppers.values():
-        if stopper.input_container:
-            if stopper.input_container.id in tray_locations:
-                tray_locations[stopper.input_container.id].append(
-                    stopper.id + " input"
-                )
+        if stopper.container:
+            if stopper.container.id not in tray_locations:
+                tray_locations.add(stopper.container.id)
             else:
-                tray_locations[stopper.input_container.id] = [
-                    stopper.id + " input"
-                ]
-        output = 0
-        for tray in stopper.output_trays.values():
-            if tray:
-                if tray.id in tray_locations:
-                    tray_locations[tray.id].append(
-                        stopper.id + f" output {output}"
-                    )
-                else:
-                    tray_locations[tray.id] = [
-                        stopper.id + f" output {output}"
-                    ]
-            output += 1
-
-    # for i in range(len(tray_locations)):
-    #     tray_string += (
-    #         f"Tray {i} { [stopper_id for stopper_id in tray_locations[str(i)]] } \n "
-    #     )
-    #     next_lines_to_delete += 1
-
-    for tray_id in tray_locations:
-        if len(tray_locations[tray_id]) > 1:
-            logger.error(f"Tray {tray_id} is located at {tray_locations[tray_id]}")
-            raise Exception(f"Tray {tray_id} is located at {tray_locations[tray_id]}")
+                raise Exception(
+                    f"Tray {stopper.container.id} is located at two stoppers at the same time"
+                )
+    for conveyor in core.conveyors.values():
+        if conveyor.container:
+            if conveyor.container.id not in tray_locations:
+                tray_locations.add(conveyor.container.id)
+            else:
+                raise Exception(
+                    f"Tray {conveyor.container.id} is located at two conveyors at the same time"
+                )
 
     # Check if all trays in simulation are located at some stopper
     for tray in core.containers:
         if tray.id not in tray_locations:
-            logger.error(f"Tray {tray} is not located at any stopper")
             raise Exception(f"Tray {tray} is not located at any stopper")
 
     # Check if all trays have different items
-    tray_items: Dict[str, list[Product]] = {}
+    tray_items: Set[sim.item.TypeId] = set()
     for tray in core.containers:
         if not tray.content:
             break
-        if tray.id in tray_items:
-            tray_items[tray.id].append(tray.content)
+        if tray.id not in tray_items:
+            tray_items.add(tray.id)
         else:
-            tray_items[tray.id] = [tray.content]
-
-    for tray_id in tray_items:
-        if len(tray_items[tray_id]) > 1:
-            logger.error(f"Tray {tray_id} has items {tray_items[tray_id]}")
-            raise Exception(f"Tray {tray_id} has items {tray_items[tray_id]}")
+            raise Exception(f"Tray {tray} has the same item as another tray")
 
 
 def print_simulation_data(core: desym.core.Simulation):
@@ -92,7 +75,7 @@ def print_simulation_data(core: desym.core.Simulation):
     next_lines_to_delete = 2
     tray_string = ""
     for stopper in core.stoppers.values():
-        tray_string += f"Stopper {stopper.id} input: {stopper.input_container.id if stopper.input_container is not None else None } { [tray.id if tray is not None else None for tray in stopper.output_trays.values()]} \n "
+        tray_string += f"Stopper {stopper.id} input: {stopper.container.id if stopper.container is not None else None } \n "
         next_lines_to_delete += 1
     global sim_time_max, sim_time_min, callback_time_max, callback_time_min, calc_mean_interval
     sim_time = (time_one - time_two) * 1000
