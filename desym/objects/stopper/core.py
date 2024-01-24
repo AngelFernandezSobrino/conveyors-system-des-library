@@ -1,34 +1,24 @@
-from __future__ import annotations
-from ast import Str
-import dataclasses
 from typing import (
-    Any,
-    Callable,
-    Mapping,
     TypedDict,
     TYPE_CHECKING,
     Union,
-    Dict,
-    TypeVar,
-    Generic,
 )
-from desym.helpers.timed_events_manager import TimedEventsManager
 
-from desym.objects.container import Container
-from desym.objects.conveyor.core import Conveyor
 from . import events
 from . import states
 
 if TYPE_CHECKING:
+    from desym.objects.container import Container
+    from desym.objects.conveyor.core import Conveyor
     import desym.objects.system
-
-import desym.controllers.results_controller
-import desym.controllers.behavior_controller
-import desym.core
+    from desym.external_function import StopperExternalFunctionController
+    from desym.timed_events_manager import TimedEventsManager
+    import desym.core
+    import desym.objects.stopper
 
 
 class StopperDescription(TypedDict):
-    destiny: list[Stopper.StopperId]
+    destiny: list[desym.objects.stopper.TypeId]
     steps: list[int]
     move_behaviour: list[str]
     rest_steps: list[int]
@@ -36,32 +26,20 @@ class StopperDescription(TypedDict):
     priority: int
 
 
-BehaviorControllerType = TypeVar(
-    "BehaviorControllerType",
-    bound=desym.controllers.behavior_controller.BaseBehaviourController,
-)
-ResultsControllerType = TypeVar(
-    "ResultsControllerType",
-    bound=desym.controllers.results_controller.BaseResultsController,
-)
-
-
-class Stopper(Generic[BehaviorControllerType, ResultsControllerType]):
-    StopperId = Union[str, str]
-
+class Stopper:
     def __init__(
         self,
         id: str,
         description: StopperDescription,
         simulation: desym.core.Simulation,
-        external_function: Callable[..., Any],
+        external_events_controller: StopperExternalFunctionController,
         debug,
     ):
         self.id = id
         self.description = description
 
         # External function to emit events to extenal system
-        self.external_function: Callable[..., Any] = external_function
+        self.external_events_controller = external_events_controller
 
         # Globals
         self.simulation: desym.core.Simulation = simulation
@@ -115,7 +93,7 @@ class BehaviorInfo:
             self.output_stoppers_ids[k]: v
             for k, v in enumerate(stopper_description["move_behaviour"])
         }
-        self.input_stoppers_ids: list[Stopper.StopperId] = []
+        self.input_stoppers_ids: list[desym.objects.stopper.TypeId] = []
         for external_stopper_id, stopper_info in simulation_description.items():
             if stopper_id in stopper_info["destiny"]:
                 self.input_stoppers_ids += [external_stopper_id]

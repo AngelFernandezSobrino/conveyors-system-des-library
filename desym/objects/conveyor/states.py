@@ -1,16 +1,11 @@
-from __future__ import annotations
 from enum import Enum
-from hmac import new
-from re import M
-from typing import TYPE_CHECKING
 
-from matplotlib.style import available
-from numpy import mat
-from desym.helpers.timed_events_manager import Event
-from desym.objects.stopper import states
+from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
+    from desym.timed_events_manager import CustomEventListener
+    from desym.objects.stopper import states
     from . import core
     from .core import Conveyor
 
@@ -47,7 +42,9 @@ class State:
         match self.state:
             case States.MOVING:
                 self.c.events_manager.push(
-                    Event(self.c.states.go_state, (States.NOT_AVAILABLE,), {}),
+                    CustomEventListener(
+                        self.c.states.go_state, (States.NOT_AVAILABLE,), {}
+                    ),
                     self.c.steps,
                 )
             case States.NOT_AVAILABLE_BY_DESTINY:

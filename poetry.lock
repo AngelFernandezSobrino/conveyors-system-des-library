@@ -1318,7 +1318,7 @@ tests = ["pytest (>=4.6)"]
 name = "mypy"
 version = "1.2.0"
 description = "Optional static typing for Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1364,7 +1364,7 @@ reports = ["lxml"]
 name = "mypy-extensions"
 version = "1.0.0"
 description = "Type system extensions for programs checked with the mypy type checker."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.5"
 files = [
@@ -2981,4 +2981,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.x"
-content-hash = "ba59662a886df0aefe3668628fdc21b074e9189188ac9abeac0d50392846f1bd"
+content-hash = "ef8703381ab4d5dbb69af29ce94410e3de1e27d9898285f82fc17610186ab2b6"

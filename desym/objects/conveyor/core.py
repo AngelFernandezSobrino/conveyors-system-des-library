@@ -8,14 +8,14 @@ from . import states
 if TYPE_CHECKING:
     import desym.objects.system
     import desym.objects.stopper.core
-    import desym.helpers.timed_events_manager
+    import desym.timed_events_manager
 
 import desym.core
 
 
 class ConveyorDescription(TypedDict):
-    origin_id: desym.objects.stopper.core.Stopper.StopperId
-    destiny_id: desym.objects.stopper.core.Stopper.StopperId
+    origin_id: desym.objects.stopper.TypeId
+    destiny_id: desym.objects.stopper.TypeId
     steps: int
 
 
@@ -35,7 +35,7 @@ class Conveyor:
 
         # Globals
         self.simulation = simulation
-        self.events_manager: desym.helpers.timed_events_manager.TimedEventsManager = (
+        self.events_manager: desym.timed_events_manager.TimedEventsManager = (
             self.simulation.events_manager
         )
         self.origin: desym.objects.stopper.core.Stopper

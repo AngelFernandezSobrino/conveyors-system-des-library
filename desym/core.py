@@ -1,28 +1,30 @@
 from __future__ import annotations
 from typing import (
-    Any,
     Callable,
-    Dict,
-    Mapping,
-    TypedDict,
     TYPE_CHECKING,
     TypeVar,
     Generic,
-    List,
 )
 
 import time
 
-from desym.helpers.timed_events_manager import Event, TimedEventsManager
+from desym.external_function import (
+    StopperExternalFunctionController,
+)
+
+from desym.timed_events_manager import (
+    CustomEventListener,
+    Step,
+    TimedEventsManager,
+)
 from desym.objects.conveyor.core import Conveyor, ConveyorDescription
 from desym.objects.stopper.core import Stopper
 from desym.objects.container import Container
 
 if TYPE_CHECKING:
     import desym.objects.system
+    import desym.objects.stopper
 
-import desym.controllers.results_controller
-import desym.controllers.behavior_controller
 
 import logging
 
@@ -33,61 +35,40 @@ consoleHandler.setFormatter(logFormatter)
 logger.addHandler(consoleHandler)
 
 
-BehaviorControllerType = TypeVar(
-    "BehaviorControllerType",
-    bound=desym.controllers.behavior_controller.BaseBehaviourController,
-)
-
-ResultsControllerType = TypeVar(
-    "ResultsControllerType",
-    bound=desym.controllers.results_controller.BaseResultsController,
-)
-
-
-class Simulation(Generic[BehaviorControllerType, ResultsControllerType]):
+class Simulation:
     def __init__(
         self,
         description: desym.objects.system.SystemDescription,
-        behavior_controllers: Mapping[str, BehaviorControllerType],
-        results_controllers: Mapping[str, ResultsControllerType],
+        stopper_external_events_controller: dict[
+            desym.objects.stopper.TypeId, StopperExternalFunctionController
+        ],
+        system_external_events: dict[Step, list[CustomEventListener]],
         callback_after_step_event: Callable[[Simulation], None] | None,
     ) -> None:
         self.events_manager = TimedEventsManager()
 
         self.description = description
-        self.behavior_controllers = behavior_controllers
-        self.results_controllers = results_controllers
+        self.stopper_external_events_controller = stopper_external_events_controller
+        self.system_external_events = system_external_events
 
         self.callback_after_step_event = callback_after_step_event
-        for behavior_controller in behavior_controllers.values():
-            for (
-                step,
-                external_function_list,
-            ) in behavior_controller.external_functions.items():
-                for external_function in external_function_list:
-                    self.events_manager.add(
-                        Event(external_function, (self,), {}),
-                        step,
-                    )
+
+        for step, events in self.system_external_events.items():
+            for event in events:
+                self.events_manager.add(event, step)
 
         # Build simulation graph
 
-        self.stoppers: dict[
-            Stopper.StopperId, Stopper[BehaviorControllerType, ResultsControllerType]
-        ] = {}
+        self.stoppers: dict[desym.objects.stopper.TypeId, Stopper] = {}
 
         self.conveyors: dict[Conveyor.ConveyorId, Conveyor] = {}
 
         for stopper_id, stopper_description in self.description.items():
-            self.stoppers[stopper_id] = Stopper[
-                BehaviorControllerType, ResultsControllerType
-            ](
+            self.stoppers[stopper_id] = Stopper(
                 stopper_id,
                 stopper_description,
                 self,
-                behavior_controllers,
-                results_controllers,
-                external_function,
+                self.stopper_external_events_controller[stopper_id],
                 False,
             )
 

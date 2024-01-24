@@ -50,28 +50,28 @@ class InputEvents:
                     f"Fatal error: Unknown state {self.c.states.state} in stopper {self.c.id}"
                 )
 
-    def destiny_available(self, conveyor_id: Conveyor.ConeyorId) -> None:
+    def destiny_available(self, conveyor_id: Conveyor.ConveyorId) -> None:
         actual_state = copy.deepcopy(self.c.states.state)
         for index, conveyor in enumerate(self.c.output_conveyors):
             if conveyor.id == conveyor_id:
                 actual_state.destinies[index] = States.Destiny.AVAILABLE
                 self.c.states.go_state(actual_state)
 
-    def destiny_not_available(self, conveyor_id: Conveyor.ConeyorId) -> None:
+    def destiny_not_available(self, conveyor_id: Conveyor.ConveyorId) -> None:
         actual_state = copy.deepcopy(self.c.states.state)
         for index, conveyor in enumerate(self.c.output_conveyors):
             if conveyor.id == conveyor_id:
                 actual_state.destinies[index] = States.Destiny.NOT_AVAILABLE
                 self.c.states.go_state(actual_state)
 
-    def control_lock(self, conveyor_id: Conveyor.ConeyorId) -> None:
+    def control_lock(self, conveyor_id: Conveyor.ConveyorId) -> None:
         actual_state = copy.deepcopy(self.c.states.state)
         for index, conveyor in enumerate(self.c.output_conveyors):
             if conveyor.id == conveyor_id:
                 actual_state.control[index] = States.Control.LOCKED
                 self.c.states.go_state(actual_state)
 
-    def control_unlock(self, conveyor_id: Conveyor.ConeyorId) -> None:
+    def control_unlock(self, conveyor_id: Conveyor.ConveyorId) -> None:
         actual_state = copy.deepcopy(self.c.states.state)
         for index, conveyor in enumerate(self.c.output_conveyors):
             if conveyor.id == conveyor_id:

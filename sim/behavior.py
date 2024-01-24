@@ -23,8 +23,6 @@ import logging
 logger = logging.getLogger("main.behaviour")
 
 
-
-
 tray_index = 1
 product_type_index: ProductTypeReferences = ProductTypeReferences.product_1
 
@@ -40,8 +38,9 @@ class BaselineBehaviourController(BaseBehaviourController):
         super().__init__(system_description)
 
         input_pt01_at_rest_function = ParametrizedFunction(pt01_container_input, {})
-        external_container_input_function = ParametrizedFunction(external_container_input, {})
-
+        external_container_input_function = ParametrizedFunction(
+            external_container_input, {}
+        )
 
         self.external_functions = {0: [external_container_input_function]}
 
@@ -50,7 +49,7 @@ class BaselineBehaviourController(BaseBehaviourController):
         for i in range(10, 50000, 100):
             self.external_functions[i] = [calculate_busyness_function]
 
-        self.check_request_functions = {
+        self.external_functions = {
             "DIR04": [
                 ParametrizedFunction(delay, {"time": 10}),
                 ParametrizedFunction(empty_tray, {}),
@@ -108,6 +107,7 @@ def external_container_input(simulation: desym.core.Simulation, params):
         simulation.containers.append(new_tray)
         simulation.stoppers["PT01"].input_events.arrival(new_tray)
 
+
 def pt01_container_input(stopper: CaseStopper, params):
     global tray_index
     if tray_index < 15:
@@ -152,7 +152,11 @@ def fill_tray_one_product(stopper: Stopper, params):
         return
 
     if stopper.input_container.load(
-        Product(str(product_serial_number_database[product_type_index]), ProductTypeReferences.product_1, "0")
+        Product(
+            str(product_serial_number_database[product_type_index]),
+            ProductTypeReferences.product_1,
+            "0",
+        )
     ):
         product_serial_number_database[product_type_index] += 1
 
@@ -169,19 +173,31 @@ def fill_tray_three_products(stopper: Stopper, params):
 
     if product_type_index == ProductTypeReferences.product_1:
         if stopper.input_container.load(
-            Product(str(product_serial_number_database[product_type_index]), ProductTypeReferences.product_1, "0")
+            Product(
+                str(product_serial_number_database[product_type_index]),
+                ProductTypeReferences.product_1,
+                "0",
+            )
         ):
             product_serial_number_database[product_type_index] += 1
         product_type_index = ProductTypeReferences.product_2
     elif product_type_index == ProductTypeReferences.product_2:
         if stopper.input_container.load(
-            Product(str(product_serial_number_database[product_type_index]), ProductTypeReferences.product_2, "0")
+            Product(
+                str(product_serial_number_database[product_type_index]),
+                ProductTypeReferences.product_2,
+                "0",
+            )
         ):
             product_serial_number_database[product_type_index] += 1
         product_type_index = ProductTypeReferences.product_3
     elif product_type_index == ProductTypeReferences.product_3:
         if stopper.input_container.load(
-            Product(str(product_serial_number_database[product_type_index]), ProductTypeReferences.product_3, "0")
+            Product(
+                str(product_serial_number_database[product_type_index]),
+                ProductTypeReferences.product_3,
+                "0",
+            )
         ):
             product_serial_number_database[product_type_index] += 1
         product_type_index = ProductTypeReferences.product_1
@@ -271,7 +287,10 @@ def bifurcation_pt16(stopper: Stopper, params):
     if not stopper.input_container:
         return
 
-    if not stopper.input_container.content or stopper.input_container.content.state == "1":
+    if (
+        not stopper.input_container.content
+        or stopper.input_container.content.state == "1"
+    ):
         logger.debug(f"Bifurcation PT16: Moving {stopper.input_container} to DIR07")
         stopper.input_events.lock(["PT17"])
         stopper.input_events.unlock(["DIR07"])

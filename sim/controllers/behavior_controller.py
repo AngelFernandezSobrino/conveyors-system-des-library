@@ -25,17 +25,16 @@ class BaseBehaviourController:
         self.external_functions: dict[
             desym.helpers.timed_events_manager.Step, list[ParametrizedFunction]
         ] = {}
-        self.check_request_functions: dict[
+        self.stopper_external_functions: dict[
             Stopper.StopperId, list[ParametrizedFunction]
         ] = {}
-        self.return_rest_functions: dict[Stopper.StopperId, Any] = {}
 
 
 def delay(self: desym.objects.stopper.core.Stopper, params):
     for conveyor in self.output_conveyors:
         self.input_events.control_lock(conveyor.id)
         self.events_manager.push(
-            desym.helpers.timed_events_manager.Event(
+            desym.helpers.timed_events_manager.CustomEventListener(
                 callable=self.input_events.control_unlock,
                 args=(conveyor.id,),
                 kwargs={"all": True},

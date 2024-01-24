@@ -1,4 +1,3 @@
-from __future__ import annotations
 import copy
 from enum import Enum
 from typing import TYPE_CHECKING, List
@@ -53,7 +52,8 @@ class StateController:
         self.state = state
         self.c.output_events.end_state(prev_state)
 
-        self.c.external_function(self)
+        if self.c.external_events_controller is not None:
+            self.c.external_events_controller.external_function(self.c)
 
         actual_state = copy.deepcopy(self.state)
         match self.state:
