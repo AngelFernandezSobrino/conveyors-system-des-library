@@ -113,7 +113,7 @@ def print_simulation_data(core: desym.core.Simulation):
 
     lines_to_delete = next_lines_to_delete
     print(
-        f"Step:{core.events_manager.step} Sim time:"
+        f"Step:{core.timed_events_manager.step} Sim time:"
         + "{:4.4f}".format(sim_time)
         + " Max: "
         + "{:4.4f}".format(sim_time_max)

@@ -4,7 +4,7 @@ if TYPE_CHECKING:
     import desym.objects.stopper
     from desym.objects.stopper.core import Stopper
     import desym.objects.system
-    import desym.timed_events_manager
+    import desym.events_manager
 
 
 class StopperExternalFunctionController:
@@ -16,13 +16,15 @@ class StopperExternalFunctionController:
 
     def register_event(
         self,
-        stopper_id: desym.objects.stopper.StopperId,
-        event: desym.timed_events_manager.CustomEventListener,
+        id: str,
+        event: desym.events_manager.CustomEventListener,
     ):
-        if stopper_id not in self.functions_repository:
-            self.functions_repository[stopper_id] = []
-        self.functions_repository[stopper_id] += [event]
+        if id not in self.functions_repository:
+            self.functions_repository[id] = []
+        self.functions_repository[id] += [event]
 
-    def external_function(self, stopper: Stopper):
-        for function in self.functions_repository[stopper.id]:
-            function(stopper)
+    def external_function(self, context: Stopper | Conveyor):
+        if context.id not in self.functions_repository:
+            return
+        for function in self.functions_repository[context.id]:
+            function(context)

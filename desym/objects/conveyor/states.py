@@ -2,6 +2,7 @@ from __future__ import annotations
 from enum import Enum
 
 from typing import TYPE_CHECKING
+from desym.events_manager import CustomEventListener
 
 
 if TYPE_CHECKING:

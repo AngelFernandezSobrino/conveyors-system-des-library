@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from desym.objects.conveyor.core import Conveyor
     import desym.objects.system
     from desym.external_function import StopperExternalFunctionController
-    from desym.timed_events_manager import TimedEventsManager
+    from desym.events_manager import TimedEventsManager
     import desym.core
     import desym.objects.stopper
 
@@ -51,7 +51,9 @@ class Stopper(Generic[ContentType]):
 
         # Globals
         self.simulation: desym.core.Simulation = simulation
-        self.events_manager: TimedEventsManager = self.simulation.events_manager
+        self.timed_events_manager: TimedEventsManager = (
+            self.simulation.timed_events_manager
+        )
 
         self.behaviorInfo = BehaviorInfo(
             id,

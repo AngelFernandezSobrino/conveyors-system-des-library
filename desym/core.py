@@ -2,12 +2,13 @@ from __future__ import annotations
 from typing import Callable, TYPE_CHECKING
 
 import time
+from desym.events_manager import EventsManager
 
 from desym.external_function import (
     StopperExternalFunctionController,
 )
 
-from desym.timed_events_manager import (
+from desym.events_manager import (
     CustomEventListener,
     Step,
     TimedEventsManager,
@@ -41,13 +42,13 @@ class Simulation:
         system_external_events: dict[Step, list[CustomEventListener]],
         callback_after_step_event: Callable[[Simulation], None] | None,
     ) -> None:
-        self.events_manager = TimedEventsManager()
+        self.timed_events_manager = TimedEventsManager()
 
         self.description = description
         self.stopper_external_events_controller = stopper_external_events_controller
         self.system_external_events = system_external_events
 
-        self.callback_after_step_event = callback_after_step_event
+        self.events_manager = EventsManager()
 
         for step, events in self.system_external_events.items():
             for event in events:
@@ -108,7 +109,7 @@ class Simulation:
         try:
             while True:
                 start_time = time.time()
-                if self.events_manager.run() and self.callback_after_step_event:
+                if self.timed_events_manager.run() and self.callback_after_step_event:
                     self.callback_after_step_event(self)
 
                 time.sleep(
@@ -123,20 +124,20 @@ class Simulation:
                 self.sim_run_real_time_forever(real_time_step)
 
     def sim_run_steps_real_time(self, steps, real_time_step):
-        while self.events_manager.step < steps:
+        while self.timed_events_manager.step < steps:
             start_time = time.time()
-            self.events_manager.run()
+            self.timed_events_manager.run()
             time.sleep(real_time_step - ((time.time() - start_time) % real_time_step))
 
     def sim_run_steps(self, steps):
-        while self.events_manager.step < steps:
-            if self.events_manager.run() and self.callback_after_step_event:
+        while self.timed_events_manager.step < steps:
+            if self.timed_events_manager.run() and self.callback_after_step_event:
                 self.callback_after_step_event(self)
 
     def sim_run_forever(self):
         try:
             while True:
-                if self.events_manager.run() and self.callback_after_step_event:
+                if self.timed_events_manager.run() and self.callback_after_step_event:
                     self.callback_after_step_event(self)
         except KeyboardInterrupt:
             res = input("Ctrl-c was pressed. Do you really want to exit? y/n ")

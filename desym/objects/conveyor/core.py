@@ -7,7 +7,7 @@ from . import events, states
 if TYPE_CHECKING:
     import desym.objects.system
     import desym.objects.stopper.core
-    import desym.timed_events_manager
+    import desym.events_manager
     import desym.objects.conveyor
 
 import desym.core
@@ -33,8 +33,8 @@ class Conveyor:
 
         # Globals
         self.simulation = simulation
-        self.events_manager: desym.timed_events_manager.TimedEventsManager = (
-            self.simulation.events_manager
+        self.events_manager: desym.events_manager.TimedEventsManager = (
+            self.simulation.timed_events_manager
         )
         self.origin: desym.objects.stopper.core.Stopper
         self.destiny: desym.objects.stopper.core.Stopper

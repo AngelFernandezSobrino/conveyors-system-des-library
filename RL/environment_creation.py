@@ -140,13 +140,15 @@ simulation_cycles_detector = graph.GraphAnalizer(sim_core)
 
 start = time.time()
 
-results_production.simulation_start(sim_core.stoppers, sim_core.events_manager.step)
-results_time.simulation_start(sim_core.stoppers, sim_core.events_manager.step)
+results_production.simulation_start(
+    sim_core.stoppers, sim_core.timed_events_manager.step
+)
+results_time.simulation_start(sim_core.stoppers, sim_core.timed_events_manager.step)
 
 sim_core.sim_run_steps(settings.steps)
 
-results_production.simulation_end(sim_core.stoppers, sim_core.events_manager.step)
-results_time.simulation_end(sim_core.stoppers, sim_core.events_manager.step)
+results_production.simulation_end(sim_core.stoppers, sim_core.timed_events_manager.step)
+results_time.simulation_end(sim_core.stoppers, sim_core.timed_events_manager.step)
 
 
 class SimEnv(gym.Env):
