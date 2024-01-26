@@ -1,8 +1,13 @@
+from __future__ import annotations
 import argparse
 from statistics import mean
 import time
 import os
-from typing import List, Union
+from typing import Dict, Generic, List, TypeVar, Union
+from desym.events_manager import CustomEventListener
+from sim import results_controller
+from sim import item
+import sim
 from sim.item import ProductTypeReferences
 
 import sys
@@ -11,14 +16,18 @@ from sim.logger import logger
 import logging
 
 import sim.checking as checking
-import sim.mqtt as mqtt
+
+# import sim.mqtt as mqtt
 import sim.settings as settings
-import sim.graph as graph
+
+# import sim.graph as graph
 import sim.data_storage as data_storage
 
 import desym.core
-import desym.controllers.results_controller as results_controller
-import sim.behavior as custom_behaviour
+import desym.config_parser
+
+import sim.controller as custom_behaviour
+
 
 ## Config desym module logging level
 
@@ -32,19 +41,22 @@ parser.add_argument("-v", "--verbose", action="store_true")  # on/off flag
 
 args = parser.parse_args()
 
-print(args.verbose)
 
 if args.verbose:
     logging_level = logging.DEBUG
 else:
     logging_level = logging.INFO
 
-logging.getLogger("desym").setLevel(logging_level)
+logging_level = logging.DEBUG
+
+logger = logging.getLogger("desym")
+
+logger.setLevel(logging_level)
 
 ## Simulation configuration
 
 config_path = os.path.dirname(os.path.abspath(__file__)) + "/config.xlsx"
-config_parser = desym.helpers.ConfigParser(config_path)
+config_parser = desym.config_parser.ConfigParser(config_path)
 config_parser.parse("config_parser")
 
 ## Configure W&B
@@ -57,32 +69,6 @@ wandb_enabled = False
 
 ## Configure simulation behavior
 
-behavior_baseline = custom_behaviour.BaselineBehaviourController(config_parser.config)
-
-
-def production_update_callback(*args, **kwargs) -> None:
-    data_storage.production_update_callback(*args, **kwargs)
-    # wandb_wrapper.production_update_callback(*args, **kwargs)
-
-
-def time_update_callback(*args, **kwargs):
-    data_storage.time_update_callback(*args, **kwargs)
-    # wandb_wrapper.time_update_callback(*args, **kwargs)
-
-
-def busyness_update_callback(*args, **kwargs):
-    data_storage.busyness_update_callback(*args, **kwargs)
-    # wandb_wrapper.busyness_update_callback(*args, **kwargs)
-
-
-results_production = results_controller.CounterResultsController(
-    custom_behaviour.ProductTypeReferences, production_update_callback
-)
-results_time = results_controller.TimesResultsController(
-    config_parser.config,
-    time_update_callback,
-    busyness_update_callback,
-)
 
 ## Step callback function for each simulation step
 
@@ -100,50 +86,50 @@ def step_callback(core: desym.core.Simulation):
 
 ## Create simulation core
 
-sim_core = desym.core.Simulation[
-    custom_behaviour.BaseBehaviourController,
-    results_controller.CounterResultsController
-    | results_controller.TimesResultsController,
-](
-    config_parser.config,
-    {"baseline": behavior_baseline},
-    {"production": results_production, "busyness": results_time},
+sim_core = desym.core.Simulation(config_parser.config, debug=True)
+
+
+behavior = custom_behaviour.SimulationController(sim_core)
+
+sim_core.register_external_events(
+    behavior.external_functions,
     step_callback,
 )
 
+for data_storage_step in range(0, settings.steps, 100):
+    sim_core.timed_events_manager.add(
+        CustomEventListener(
+            data_storage.data_storage_update, (), {"controller": behavior}
+        ),
+        data_storage_step,
+    )
+
 ## Create simulation graph analizer
 
-simulation_cycles_detector = graph.GraphAnalizer(sim_core)
+# simulation_cycles_detector = graph.GraphAnalizer(sim_core)
 
 ## Run simulation
 
 start = time.time()
 
-results_production.simulation_start(sim_core.stoppers, sim_core.events_manager.step)
-results_time.simulation_start(sim_core.stoppers, sim_core.events_manager.step)
-
 sim_core.sim_run_steps(settings.steps)
 
-results_production.simulation_end(sim_core.stoppers, sim_core.events_manager.step)
-results_time.simulation_end(sim_core.stoppers, sim_core.events_manager.step)
+behavior.results_time.update_all_times()
 
 
 ## Print simulation results
 
 logger.info(f"Simulation spent time: {time.time() - start}")
 logger.info(f"Simulation duration: {settings.steps*settings.step_to_time / 3600} hours")
-logger.debug(
-    f"Production results {custom_behaviour.ProductTypeReferences.product_1.name}: {results_production.counters_timeseries[custom_behaviour.ProductTypeReferences.product_1]}"
-)
 logger.info("Production results:")
 logger.info(
-    f"Product {custom_behaviour.ProductTypeReferences.product_1.name}: {results_production.counters[custom_behaviour.ProductTypeReferences.product_1]}"
+    f"Product {item.ProductTypeReferences.product_1.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_1]}"
 )
 logger.info(
-    f"Product {custom_behaviour.ProductTypeReferences.product_2.name}: {results_production.counters[custom_behaviour.ProductTypeReferences.product_2]}"
+    f"Product {item.ProductTypeReferences.product_2.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_2]}"
 )
 logger.info(
-    f"Product {custom_behaviour.ProductTypeReferences.product_3.name}: {results_production.counters[custom_behaviour.ProductTypeReferences.product_3]}"
+    f"Product {item.ProductTypeReferences.product_3.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_3]}"
 )
 
 import csv
