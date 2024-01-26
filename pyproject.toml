@@ -33,7 +33,7 @@ tests = "poetry run pytest"
 tests-cov = "poetry run pytest --cov=sim --cov-report=term"
 lint = "poetry run black ./sim/* ./tests/*"
 types = "poetry run mypy ./desym ./tests"
-sim-base = "poetry run python tests/sim/main.py"
+sim = "poetry run python sim/main.py"
 rl = "poetry run python rl_training.py"
 
 [build-system]
