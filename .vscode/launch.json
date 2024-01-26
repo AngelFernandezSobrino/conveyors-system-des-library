@@ -16,9 +16,9 @@
             "name": "Sim Baseline",
             "type": "python",
             "request": "launch",
-            "program": "tests/sim/main.py",
+            "program": "sim/main.py",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": false
         }
     ]
 }
