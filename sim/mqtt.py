@@ -32,7 +32,7 @@ def send_data_to_mqtt(core: Simulation):
         return
 
     msg_list: List[Tuple[str, str, int, bool]] = [
-        ("desym/step", str(core.events_manager.step), 0, False)
+        ("desym/step", str(core.timed_events_manager.step), 0, False)
     ]
 
     for stopper in core.stoppers.values():
@@ -50,9 +50,7 @@ def send_data_to_mqtt(core: Simulation):
                 )
             )
         else:
-            msg_list.append(
-                (f"desym/stopper/{stopper.id}/input", None, 0, False)
-            )
+            msg_list.append((f"desym/stopper/{stopper.id}/input", None, 0, False))
 
         for output_tray_id in stopper.output_trays:
             if stopper.output_trays[output_tray_id]:

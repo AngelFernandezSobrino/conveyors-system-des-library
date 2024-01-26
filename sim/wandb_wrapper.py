@@ -24,7 +24,7 @@ wandb.define_metric("results/*", step_metric="results/simulation_time")
 def step_callback(core: desym.core.Simulation):
     if wandb_data_dict != {}:
         wandb_data_dict["results/simulation_time"] = (
-            core.events_manager.step * step_to_time / 60
+            core.timed_events_manager.step * step_to_time / 60
         )
         wandb.log(wandb_data_dict)
         wandb_data_dict.clear()

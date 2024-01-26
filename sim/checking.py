@@ -36,7 +36,7 @@ lines_to_delete = 0
 
 def check_simulation_errors(core: desym.core.Simulation):
     # Loop over all stopper objects and check if any tray is located at two places at the same time
-    tray_locations: Set[desym.objects.container.TypeId] = set()
+    tray_locations: Set[desym.objects.container.ContainerId] = set()
     for stopper in core.stoppers.values():
         if stopper.container:
             if stopper.container.id not in tray_locations:
