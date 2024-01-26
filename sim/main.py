@@ -41,7 +41,6 @@ parser.add_argument("-v", "--verbose", action="store_true")  # on/off flag
 
 args = parser.parse_args()
 
-
 if args.verbose:
     logging_level = logging.DEBUG
 else:
@@ -134,8 +133,15 @@ logger.info(
 
 import csv
 
+# Get the actual date and time string for the file name
+from datetime import datetime
 
-with open("data.csv", "w") as f:
+now = datetime.now()
+
+# dd/mm/YY H:M:S
+dt_string: str = now.strftime("%d-%m-%Y_%H-%M-%S")
+
+with open(f"data/simulations/results/{dt_string}.csv", "w") as f:
     busyness_step = 0
     production_step = {}
     for index in ProductTypeReferences:
