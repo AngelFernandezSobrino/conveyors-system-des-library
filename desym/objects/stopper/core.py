@@ -45,7 +45,7 @@ class Stopper(Generic[ContentType]):
     ):
         self.id = id
         self.description = description
-
+        self.debug = debug
         # External function to emit events to extenal system
         self.external_events_controller = external_events_controller
 

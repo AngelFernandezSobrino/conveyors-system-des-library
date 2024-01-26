@@ -1,16 +1,16 @@
 from __future__ import annotations
 from typing import TypedDict, TYPE_CHECKING
 
-from desym.objects.container import Container
 from . import events, states
 
 if TYPE_CHECKING:
+    from desym.objects.container import Container
     import desym.objects.system
     import desym.objects.stopper.core
     import desym.events_manager
     import desym.objects.conveyor
-
-import desym.core
+    import desym.objects.stopper
+    import desym.core
 
 
 class ConveyorDescription(TypedDict):
@@ -30,7 +30,7 @@ class Conveyor:
         self.id = id
         self.description = description
         self.steps = description["steps"]
-
+        self.debug = debug
         # Globals
         self.simulation = simulation
         self.events_manager: desym.events_manager.TimedEventsManager = (

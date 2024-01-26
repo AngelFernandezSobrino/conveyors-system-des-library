@@ -37,7 +37,6 @@ class Simulation:
         self,
         description: desym.objects.system.SystemDescription,
         debug: bool = False,
-        ],
     ) -> None:
         self.timed_events_manager = TimedEventsManager()
 
@@ -46,8 +45,6 @@ class Simulation:
         self.events_manager = EventsManager()
 
         self.stopper_external_events_controller = ExternalFunctionController()
-            for event in events:
-                self.events_manager.add(event, step)
 
         # Build simulation graph
 
@@ -61,7 +58,7 @@ class Simulation:
                 stopper_description,
                 self,
                 self.stopper_external_events_controller,
-                False,
+                debug=debug,
             )
 
         for stopper_id, stopper_description in self.description.items():
@@ -77,7 +74,7 @@ class Simulation:
                             steps=stopper_description["steps"][destiny_stopper_index],
                         ),
                         self,
-                        False,
+                        debug=debug,
                     )
 
                     self.conveyors["{stopper_id}_{destiny_stopper_id}"].set_origin(

@@ -23,8 +23,10 @@ class InputEvents:
 
     def input(self, container: Container) -> None:
         actual_state = copy.deepcopy(self.c.states.state)
+        if self.c.debug:
+            print(f"{self.c} input {container}")
         match self.c.states.state:
-            case States.Node.RESERVED:
+            case States(States.Node.RESERVED):
                 if self.c.container is not None:
                     raise Exception(
                         f"Fatal error: Tray is not None, WTF {self.c.container}"
@@ -32,7 +34,9 @@ class InputEvents:
                 actual_state.node = States.Node.OCCUPIED
                 self.c.container = container
                 self.c.states.go_state(actual_state)
-            case States.Node.RESERVED, States.Node.SENDING, States.Node.OCCUPIED:
+            case States(node=States.Node.REST) | States(
+                node=States.Node.OCCUPIED
+            ) | States(node=States.Node.SENDING):
                 raise Exception(
                     f"Fatal error: Actual state is {self.c.states.state}, input event is not allowed"
                 )
@@ -44,14 +48,16 @@ class InputEvents:
     def reserve(self) -> None:
         actual_state = copy.deepcopy(self.c.states.state)
         match self.c.states.state:
-            case States.Node.REST:
+            case States(node=States.Node.REST):
                 if self.c.container is not None:
                     raise Exception(
                         f"Fatal error: Tray is not None, WTF {self.c.container}"
                     )
                 actual_state.node = States.Node.RESERVED
                 self.c.states.go_state(actual_state)
-            case States.Node.RESERVED, States.Node.OCCUPIED, States.Node.SENDING:
+            case States(node=States.Node.RESERVED) | States(
+                node=States.Node.OCCUPIED
+            ) | States(node=States.Node.SENDING):
                 raise Exception(
                     f"Fatal error: Actual state is {self.c.states.state}, reserve event is not allowed"
                 )
@@ -131,9 +137,12 @@ class OutputEvents:
     def output(self, destinyId: StopperId):
         if self.c.container is None:
             raise Exception("Fatal Error: Tray is None, WTF")
+
         self.c.output_conveyors[destinyId].input_events.input()
 
     def moving(self, destinyId: StopperId):
+        if self.c.debug:
+            print(f"{self.c} output to {destinyId}")
         if self.c.container is None:
             raise Exception("Fatal Error: Tray is None, WTF")
         container = self.c.container

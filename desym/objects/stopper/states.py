@@ -1,14 +1,14 @@
 from __future__ import annotations
 import copy
 from enum import Enum
+import re
 from typing import TYPE_CHECKING, Dict
 
 from attr import dataclass
 
-from desym.objects.stopper import StopperId
-
 
 if TYPE_CHECKING:
+    from desym.objects.stopper import StopperId
     from . import core
 
 
@@ -20,14 +20,32 @@ class States:
         OCCUPIED = 3
         SENDING = 4
 
+        def __str__(self) -> str:
+            return self.name
+
+        def __repr__(self) -> str:
+            return self.name
+
     class Send(Enum):
         NOTHING = 1
-        ONGOING = 1
-        DELAY = 2
+        ONGOING = 2
+        DELAY = 3
+
+        def __str__(self) -> str:
+            return str(self.value)
+
+        def __repr__(self) -> str:
+            return self.name
 
     class Destiny(Enum):
         AVAILABLE = 1
         NOT_AVAILABLE = 2
+
+        def __str__(self) -> str:
+            return str(self.value)
+
+        def __repr__(self) -> str:
+            return self.name
 
     class Control(Enum):
         LOCKED = 1
@@ -37,6 +55,9 @@ class States:
     sends: Dict[StopperId, Send]
     destinies: Dict[StopperId, Destiny]
     control: Dict[StopperId, Control]
+
+    def __str__(self) -> str:
+        return f"States(node={self.node.name}, sends={self.sends}, destinies={self.destinies}"
 
 
 class StateController:
@@ -62,6 +83,14 @@ class StateController:
     def go_state(self, state: States) -> None:
         prev_state = self.state
         self.state = state
+
+        # if self.c.debug:
+        # print(
+        #     f"--------------------\n{self.c} State change:\n{prev_state}\n{self.state}"
+        # )
+        # if self.c.id != "DIR04":
+        #     print(f"{self.c} State change")
+
         self.c.output_events.end_state(prev_state)
 
         if self.c.external_events_controller is not None:
@@ -76,17 +105,18 @@ class StateController:
                         and self.state.control[destinyId] == States.Control.UNLOCKED
                     ):
                         actual_state.node = States.Node.SENDING
-                        actual_state.destinies[destinyId] = States.Destiny.NOT_AVAILABLE
                         actual_state.sends[destinyId] = States.Send.ONGOING
+                        actual_state.destinies[destinyId] = States.Destiny.NOT_AVAILABLE
                         self.go_state(actual_state)
-            case States(States.Node.SENDING, sends, destinies):
-                for destinyId, send in destinies.items():
-                    if send == States.Send.ONGOING:
-                        actual_state.node = States.Node.SENDING
-                        actual_state.sends[destinyId] = States.Send.DELAY
+            case States(States.Node.SENDING, sends=sends, destinies=destinies):
+                for destiny_id, destiny_state in destinies.items():
+                    if sends[destiny_id] == States.Send.ONGOING:
+                        actual_state.sends[destiny_id] = States.Send.DELAY
                         self.go_state(actual_state)
+                        return
 
-                    if send == States.Send.DELAY:
+                    if sends[destiny_id] == States.Send.DELAY:
                         actual_state.node = States.Node.REST
-                        actual_state.sends[destinyId] = States.Send.NOTHING
+                        actual_state.sends[destiny_id] = States.Send.NOTHING
                         self.go_state(actual_state)
+                        return

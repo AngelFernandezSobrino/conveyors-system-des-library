@@ -3,7 +3,7 @@ from typing import Generic, TypeVar
 
 ContentType = TypeVar("ContentType")
 
-TypeId = str
+ContainerId = str
 
 
 class Container(Generic[ContentType]):
