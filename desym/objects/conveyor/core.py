@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import TypedDict, TYPE_CHECKING
 
 from desym.objects.container import Container
