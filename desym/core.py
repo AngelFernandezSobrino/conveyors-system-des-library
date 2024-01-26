@@ -5,7 +5,7 @@ import time
 from desym.events_manager import EventsManager
 
 from desym.external_function import (
-    StopperExternalFunctionController,
+    ExternalFunctionController,
 )
 
 from desym.events_manager import (
@@ -36,21 +36,16 @@ class Simulation:
     def __init__(
         self,
         description: desym.objects.system.SystemDescription,
-        stopper_external_events_controller: dict[
-            desym.objects.stopper.StopperId, StopperExternalFunctionController
+        debug: bool = False,
         ],
-        system_external_events: dict[Step, list[CustomEventListener]],
-        callback_after_step_event: Callable[[Simulation], None] | None,
     ) -> None:
         self.timed_events_manager = TimedEventsManager()
 
         self.description = description
-        self.stopper_external_events_controller = stopper_external_events_controller
-        self.system_external_events = system_external_events
 
         self.events_manager = EventsManager()
 
-        for step, events in self.system_external_events.items():
+        self.stopper_external_events_controller = ExternalFunctionController()
             for event in events:
                 self.events_manager.add(event, step)
 
@@ -65,7 +60,7 @@ class Simulation:
                 stopper_id,
                 stopper_description,
                 self,
-                self.stopper_external_events_controller[stopper_id],
+                self.stopper_external_events_controller,
                 False,
             )
 
@@ -104,6 +99,18 @@ class Simulation:
 
         # List with all the container in the system
         self.containers: list[Container] = []
+
+    def register_external_events(
+        self,
+        system_external_events: dict[Step, list[CustomEventListener]],
+        callback_after_step_event: Callable[[Simulation], None] | None,
+    ):
+        self.system_external_events = system_external_events
+        self.callback_after_step_event = callback_after_step_event
+
+        for step, events in self.system_external_events.items():
+            for event in events:
+                self.timed_events_manager.add(event, step)
 
     def sim_run_real_time_forever(self, real_time_step: float):
         try:

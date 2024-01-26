@@ -88,7 +88,7 @@ class InputEvents:
                 self.c.states.go_state(actual_state)
 
     def control_unlock_by_destiny_id(
-        self, destiny_id_to_lock: desym.objects.stopper.StopperId
+        self, context, destiny_id_to_lock: desym.objects.stopper.StopperId
     ) -> None:
         actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id in self.c.output_conveyors:

@@ -1,4 +1,7 @@
+from __future__ import annotations
 from typing import TYPE_CHECKING
+
+from desym.objects.conveyor.core import Conveyor
 
 if TYPE_CHECKING:
     import desym.objects.stopper
@@ -7,11 +10,11 @@ if TYPE_CHECKING:
     import desym.events_manager
 
 
-class StopperExternalFunctionController:
+class ExternalFunctionController:
     def __init__(self):
         self.functions_repository: dict[
-            desym.objects.stopper.StopperId,
-            list[desym.timed_events_manager.CustomEventListener],
+            str,
+            list[desym.events_manager.CustomEventListener],
         ] = {}
 
     def register_event(

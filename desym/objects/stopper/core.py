@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from desym.objects.container import Container
     from desym.objects.conveyor.core import Conveyor
     import desym.objects.system
-    from desym.external_function import StopperExternalFunctionController
+    from desym.external_function import ExternalFunctionController
     from desym.events_manager import TimedEventsManager
     import desym.core
     import desym.objects.stopper
@@ -40,7 +40,7 @@ class Stopper(Generic[ContentType]):
         id: desym.objects.stopper.StopperId,
         description: StopperDescription,
         simulation: desym.core.Simulation,
-        external_events_controller: StopperExternalFunctionController,
+        external_events_controller: ExternalFunctionController,
         debug,
     ):
         self.id = id
@@ -66,9 +66,6 @@ class Stopper(Generic[ContentType]):
 
         # Container storage pointer
         self.container: Container[ContentType] | None = None
-
-        # Request time
-        self.input_step = 0
 
         # Stopper composition objects
         self.input_events: events.InputEvents = events.InputEvents(self)
