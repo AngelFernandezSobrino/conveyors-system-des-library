@@ -9,8 +9,8 @@ import pprint
 pp = pprint.PrettyPrinter(depth=4)
 
 if TYPE_CHECKING:
-    from desym.objects.stopper.core import StopperDescription
-    from desym.objects.system import SystemDescription
+    from desim.objects.stopper.core import StopperDescription
+    from desim.objects.system import SystemDescription
 
 
 class ConfigParser:

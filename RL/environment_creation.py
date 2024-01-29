@@ -50,8 +50,8 @@ import tests.sim.settings as settings
 import tests.sim.graph as graph
 import tests.sim.data_storage as data_storage
 
-import desym.core
-import desym.controllers.results_controller as results_controller
+import desim.core
+import desim.controllers.results_controller as results_controller
 import tests.sim.behavior as custom_behaviour
 
 ## Config desym module logging level
@@ -78,7 +78,7 @@ logging.getLogger("desym").setLevel(logging_level)
 ## Simulation configuration
 
 config_path = os.path.dirname(os.path.abspath(__file__)) + "/config.xlsx"
-config_parser = desym.helpers.ConfigParser(config_path)
+config_parser = desim.helpers.ConfigParser(config_path)
 config_parser.parse("config_parser")
 
 ## Configure W&B
@@ -114,14 +114,14 @@ results_time = results_controller.TimesResultsController(
 ## Step callback function for each simulation step
 
 
-def step_callback(core: desym.core.Simulation):
+def step_callback(core: desim.core.Simulation):
     checking.time_one = time.time()
     checking.time_two = time.time()
 
 
 ## Create simulation core
 
-sim_core = desym.core.Simulation[
+sim_core = desim.core.Simulation[
     custom_behaviour.BaseBehaviourController,
     results_controller.CounterResultsController
     | results_controller.TimesResultsController,

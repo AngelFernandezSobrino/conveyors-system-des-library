@@ -1,8 +1,7 @@
 import logging
 
-logger = logging.getLogger("main")
-logFormatter = logging.Formatter(fmt="%(name)s: %(message)s")
+logger = logging.getLogger("mains")
+logFormatter = logging.Formatter("\N{ESC}[0m{name: <30s} - {message}", style="{")
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
 logger.addHandler(consoleHandler)
-logger.setLevel(logging.INFO)

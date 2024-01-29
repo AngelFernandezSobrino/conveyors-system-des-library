@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from sim.item import ProductTypeReferences
 
 if TYPE_CHECKING:
-    import desym.core
+    import desim.core
     import sim.controller
 
 import sim.results_controller

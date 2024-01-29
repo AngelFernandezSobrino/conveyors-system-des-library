@@ -1,25 +1,24 @@
 from __future__ import annotations
 
 from pyparsing import C
-import desym.events_manager as tem
+import desim.events_manager as tem
 import sim.results_controller
 import sim.item
-import desym.objects.container
+import desim.objects.container
 
 from typing import TYPE_CHECKING, Dict
 
 if TYPE_CHECKING:
-    import desym.objects.stopper
-    import desym.core
-    from desym.objects.stopper.core import Stopper
-    import desym.objects.stopper.states
-    from desym.objects.stopper import StopperId
-    from desym.objects.container import ContainerId
+    import desim.objects.stopper
+    import desim.core
+    from desim.objects.stopper.core import Stopper
+    import desim.objects.stopper.states
+    from desim.objects.stopper import StopperId
+    from desim.objects.container import ContainerId
 
 import logging
 
-logger = logging.getLogger("main.behaviour")
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger("mains.cont")
 
 from sim.item import Product, ProductTypeReferences
 
@@ -37,7 +36,7 @@ class SimulationController:
     def production_event_listener(self, context: sim.item.Product):
         self.results_production.increment(context.item_type)  # type: ignore
 
-    def __init__(self, simulation: desym.core.Simulation):
+    def __init__(self, simulation: desim.core.Simulation):
         self.simulation = simulation
 
         self.results_production = sim.results_controller.CounterController(
@@ -78,7 +77,7 @@ class SimulationController:
         #     )
 
         self.stopper_external_functions: dict[
-            desym.objects.stopper.StopperId, list[tem.CustomEventListener]
+            desim.objects.stopper.StopperId, list[tem.CustomEventListener]
         ] = {
             "DIR04": [
                 tem.CustomEventListener(self.delay, (), {"time": 10}),
@@ -121,7 +120,7 @@ class SimulationController:
     def delay(self, stopper: Stopper, time: int = 0):
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 
@@ -135,7 +134,7 @@ class SimulationController:
         for destiny_stopper_id in stopper.output_conveyors.keys():
             if (
                 stopper.states.state.control[destiny_stopper_id]
-                != desym.objects.stopper.states.States.Control.LOCKED
+                != desim.objects.stopper.states.States.Control.LOCKED
             ):
                 stopper.input_events.control_lock_by_destiny_id(destiny_stopper_id)
                 stopper.timed_events_manager.push(
@@ -149,7 +148,7 @@ class SimulationController:
     def external_container_input(self, context):
         global tray_index
         if tray_index < 15:
-            new_tray = desym.objects.container.Container[Product](str(tray_index), None)
+            new_tray = desim.objects.container.Container[Product](str(tray_index), None)
             tray_index += 1
             logger.debug(f"External container input {new_tray}")
             self.simulation.containers.append(new_tray)
@@ -159,7 +158,7 @@ class SimulationController:
     def empty_tray(self, stopper: Stopper[Product]):
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 
@@ -183,7 +182,7 @@ class SimulationController:
     def fill_tray_one_product(self, stopper: Stopper[Product]):
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 
@@ -208,7 +207,7 @@ class SimulationController:
     def fill_tray_three_products(self, stopper: Stopper[Product]):
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 
@@ -258,7 +257,7 @@ class SimulationController:
     def process_01(self, stopper: Stopper[Product]):
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 
@@ -277,7 +276,7 @@ class SimulationController:
     def process_02(self, stopper: Stopper[Product]):
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 
@@ -295,7 +294,7 @@ class SimulationController:
     def process_03(self, stopper: Stopper[Product]):
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 
@@ -311,39 +310,48 @@ class SimulationController:
             stopper.container.content.update_state("1")
 
     def bifurcation_pt05(self, stopper: Stopper[Product]):
+        logger.debug(f"Bifurcation PT05: {stopper.states.state}")
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 
         if not stopper.container:
             raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
 
-        if (
-            stopper.container.content
-            and stopper.states.state.control["DIR05"]
-            == desym.objects.stopper.states.States.Control.LOCKED
-            and stopper.states.state.control["DIR08"]
-            == desym.objects.stopper.states.States.Control.UNLOCKED
-        ):
+        if stopper.container.content:
             logger.debug(f"Bifurcation PT05: Moving {stopper.container} to DIR08")
-            stopper.input_events.control_lock_by_destiny_id("DIR05")
-            stopper.input_events.control_unlock_by_destiny_id(None, "DIR08")
-        elif (
-            stopper.states.state.control["DIR05"]
-            == desym.objects.stopper.states.States.Control.UNLOCKED
-            and stopper.states.state.control["DIR08"]
-            == desym.objects.stopper.states.States.Control.LOCKED
-        ):
+            if (
+                stopper.states.state.control["DIR05"]
+                != desim.objects.stopper.states.States.Control.LOCKED
+            ):
+                stopper.input_events.control_lock_by_destiny_id("DIR05")
+
+            if (
+                stopper.states.state.control["DIR08"]
+                != desim.objects.stopper.states.States.Control.UNLOCKED
+            ):
+                stopper.input_events.control_unlock_by_destiny_id(None, "DIR08")
+        else:
             logger.debug(f"Bifurcation PT05: Moving {stopper.container} to DIR05")
-            stopper.input_events.control_lock_by_destiny_id("DIR08")
-            stopper.input_events.control_unlock_by_destiny_id(None, "DIR05")
+
+            if (
+                stopper.states.state.control["DIR05"]
+                != desim.objects.stopper.states.States.Control.UNLOCKED
+            ):
+                stopper.input_events.control_unlock_by_destiny_id(None, "DIR05")
+
+            if (
+                stopper.states.state.control["DIR08"]
+                != desim.objects.stopper.states.States.Control.LOCKED
+            ):
+                stopper.input_events.control_lock_by_destiny_id("DIR08")
 
     def bifurcation_pt09(self, stopper: Stopper[Product]):
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 
@@ -366,7 +374,7 @@ class SimulationController:
     def bifurcation_pt10(self, stopper: Stopper[Product]):
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 
@@ -389,7 +397,7 @@ class SimulationController:
     def bifurcation_pt16(self, stopper: Stopper[Product]):
         if (
             stopper.states.state.node
-            != desym.objects.stopper.states.States.Node.OCCUPIED
+            != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
             return
 

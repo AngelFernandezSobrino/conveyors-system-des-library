@@ -2,10 +2,10 @@ from typing import TYPE_CHECKING, List, Tuple
 
 from tests.sim.logger import logger
 
-from desym.core import Simulation
+from desim.core import Simulation
 
 if TYPE_CHECKING:
-    from desym.core import Simulation
+    from desim.core import Simulation
 
 import paho.mqtt.publish
 import paho.mqtt.client

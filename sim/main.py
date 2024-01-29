@@ -4,7 +4,7 @@ from statistics import mean
 import time
 import os
 from typing import Dict, Generic, List, TypeVar, Union
-from desym.events_manager import CustomEventListener
+from desim.events_manager import CustomEventListener
 from sim import results_controller
 from sim import item
 import sim
@@ -23,8 +23,8 @@ import sim.settings as settings
 # import sim.graph as graph
 import sim.data_storage as data_storage
 
-import desym.core
-import desym.config_parser
+import desim.core
+import desim.config_parser
 
 import sim.controller as custom_behaviour
 
@@ -48,14 +48,12 @@ else:
 
 logging_level = logging.DEBUG
 
-logger = logging.getLogger("desym")
-
 logger.setLevel(logging_level)
 
 ## Simulation configuration
 
 config_path = os.path.dirname(os.path.abspath(__file__)) + "/config.xlsx"
-config_parser = desym.config_parser.ConfigParser(config_path)
+config_parser = desim.config_parser.ConfigParser(config_path)
 config_parser.parse("config_parser")
 
 ## Configure W&B
@@ -72,7 +70,7 @@ wandb_enabled = False
 ## Step callback function for each simulation step
 
 
-def step_callback(core: desym.core.Simulation):
+def step_callback(core: desim.core.Simulation):
     checking.time_one = time.time()
     # wandb_wrapper.step_callback(core, wandb_enabled)
 
@@ -85,7 +83,7 @@ def step_callback(core: desym.core.Simulation):
 
 ## Create simulation core
 
-sim_core = desym.core.Simulation(config_parser.config, debug=True)
+sim_core = desim.core.Simulation(config_parser.config, debug=True)
 
 
 behavior = custom_behaviour.SimulationController(sim_core)

@@ -7,11 +7,11 @@ import sim
 import sim.settings as settings
 from sim.logger import logger
 
-import desym.core
+import desim.core
 
 if TYPE_CHECKING:
     from sim.item import Product
-    import desym.objects.container
+    import desim.objects.container
     import sim.item
 
 from math import fsum
@@ -34,9 +34,9 @@ calc_mean_interval = 0
 lines_to_delete = 0
 
 
-def check_simulation_errors(core: desym.core.Simulation):
+def check_simulation_errors(core: desim.core.Simulation):
     # Loop over all stopper objects and check if any tray is located at two places at the same time
-    tray_locations: Set[desym.objects.container.ContainerId] = set()
+    tray_locations: Set[desim.objects.container.ContainerId] = set()
     for stopper in core.stoppers.values():
         if stopper.container:
             if stopper.container.id not in tray_locations:
@@ -70,7 +70,7 @@ def check_simulation_errors(core: desym.core.Simulation):
             raise Exception(f"Tray {tray} has the same item as another tray")
 
 
-def print_simulation_data(core: desym.core.Simulation):
+def print_simulation_data(core: desim.core.Simulation):
     global lines_to_delete
     next_lines_to_delete = 2
     tray_string = ""

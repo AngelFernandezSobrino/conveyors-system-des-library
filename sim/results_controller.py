@@ -1,116 +1,101 @@
 from __future__ import annotations
 import copy
-from turtle import st
 from typing import (
     TYPE_CHECKING,
-    Any,
-    Callable,
     Generic,
-    Hashable,
     Iterable,
-    Optional,
     TypeVar,
-    TypedDict,
     Dict,
-    List,
 )
 
-from enum import Enum
-from copy import deepcopy
-
-from sympy import Ge
-
-from sim.item import Product
-
-
 if TYPE_CHECKING:
-    from desym.core import Simulation
-    import desym.objects.stopper.core
+    from desim.core import Simulation
+    import desim.objects.stopper.core
 
-import desym.objects.stopper.states
-import desym.objects.conveyor.states
+import desim.objects.stopper.states
+import desim.objects.conveyor.states
 
 
-class StopperCounters(desym.objects.stopper.states.States):
-    def __init__(self, actual_state: desym.objects.stopper.states.States):
+class StopperCounters(desim.objects.stopper.states.States):
+    def __init__(self, actual_state: desim.objects.stopper.states.States):
         self.node = copy.deepcopy(actual_state.node)
         self.sends = copy.deepcopy(actual_state.sends)
         self.destinies = copy.deepcopy(actual_state.destinies)
         self.control = copy.deepcopy(actual_state.control)
 
-        self.nodeTimers: Dict[desym.objects.stopper.states.States.Node, int] = {
-            desym.objects.stopper.states.States.Node.REST: 0,
-            desym.objects.stopper.states.States.Node.RESERVED: 0,
-            desym.objects.stopper.states.States.Node.OCCUPIED: 0,
-            desym.objects.stopper.states.States.Node.SENDING: 0,
+        self.nodeTimers: Dict[desim.objects.stopper.states.States.Node, int] = {
+            desim.objects.stopper.states.States.Node.REST: 0,
+            desim.objects.stopper.states.States.Node.RESERVED: 0,
+            desim.objects.stopper.states.States.Node.OCCUPIED: 0,
+            desim.objects.stopper.states.States.Node.SENDING: 0,
         }
 
         self.nodeTimersLastUpdate: Dict[
-            desym.objects.stopper.states.States.Node, int
+            desim.objects.stopper.states.States.Node, int
         ] = {
-            desym.objects.stopper.states.States.Node.REST: 0,
-            desym.objects.stopper.states.States.Node.RESERVED: 0,
-            desym.objects.stopper.states.States.Node.OCCUPIED: 0,
-            desym.objects.stopper.states.States.Node.SENDING: 0,
+            desim.objects.stopper.states.States.Node.REST: 0,
+            desim.objects.stopper.states.States.Node.RESERVED: 0,
+            desim.objects.stopper.states.States.Node.OCCUPIED: 0,
+            desim.objects.stopper.states.States.Node.SENDING: 0,
         }
 
         self.sendsTimers: Dict[
-            desym.objects.stopper.StopperId,
-            Dict[desym.objects.stopper.states.States.Send, int],
+            desim.objects.stopper.StopperId,
+            Dict[desim.objects.stopper.states.States.Send, int],
         ] = {}
         self.sendsTimersLastUpdate: Dict[
-            desym.objects.stopper.StopperId,
-            Dict[desym.objects.stopper.states.States.Send, int],
+            desim.objects.stopper.StopperId,
+            Dict[desim.objects.stopper.states.States.Send, int],
         ] = {}
 
         for destiny_stopper_id in self.sends.keys():
             self.sendsTimers[destiny_stopper_id] = {
-                desym.objects.stopper.states.States.Send.NOTHING: 0,
-                desym.objects.stopper.states.States.Send.ONGOING: 0,
-                desym.objects.stopper.states.States.Send.DELAY: 0,
+                desim.objects.stopper.states.States.Send.NOTHING: 0,
+                desim.objects.stopper.states.States.Send.ONGOING: 0,
+                desim.objects.stopper.states.States.Send.DELAY: 0,
             }
             self.sendsTimersLastUpdate[destiny_stopper_id] = {
-                desym.objects.stopper.states.States.Send.NOTHING: 0,
-                desym.objects.stopper.states.States.Send.ONGOING: 0,
-                desym.objects.stopper.states.States.Send.DELAY: 0,
+                desim.objects.stopper.states.States.Send.NOTHING: 0,
+                desim.objects.stopper.states.States.Send.ONGOING: 0,
+                desim.objects.stopper.states.States.Send.DELAY: 0,
             }
 
         self.destiniesTimers: Dict[
-            desym.objects.stopper.StopperId,
-            Dict[desym.objects.stopper.states.States.Destiny, int],
+            desim.objects.stopper.StopperId,
+            Dict[desim.objects.stopper.states.States.Destiny, int],
         ] = {}
         self.destiniesTimersLastUpdate: Dict[
-            desym.objects.stopper.StopperId,
-            Dict[desym.objects.stopper.states.States.Destiny, int],
+            desim.objects.stopper.StopperId,
+            Dict[desim.objects.stopper.states.States.Destiny, int],
         ] = {}
 
         for destiny_stopper_id in self.destinies.keys():
             self.destiniesTimers[destiny_stopper_id] = {
-                desym.objects.stopper.states.States.Destiny.AVAILABLE: 0,
-                desym.objects.stopper.states.States.Destiny.NOT_AVAILABLE: 0,
+                desim.objects.stopper.states.States.Destiny.AVAILABLE: 0,
+                desim.objects.stopper.states.States.Destiny.NOT_AVAILABLE: 0,
             }
             self.destiniesTimersLastUpdate[destiny_stopper_id] = {
-                desym.objects.stopper.states.States.Destiny.AVAILABLE: 0,
-                desym.objects.stopper.states.States.Destiny.NOT_AVAILABLE: 0,
+                desim.objects.stopper.states.States.Destiny.AVAILABLE: 0,
+                desim.objects.stopper.states.States.Destiny.NOT_AVAILABLE: 0,
             }
 
         self.controlTimers: Dict[
-            desym.objects.stopper.StopperId,
-            Dict[desym.objects.stopper.states.States.Control, int],
+            desim.objects.stopper.StopperId,
+            Dict[desim.objects.stopper.states.States.Control, int],
         ] = {}
         self.controlTimersLastUpdate: Dict[
-            desym.objects.stopper.StopperId,
-            Dict[desym.objects.stopper.states.States.Control, int],
+            desim.objects.stopper.StopperId,
+            Dict[desim.objects.stopper.states.States.Control, int],
         ] = {}
 
         for destiny_stopper_id in self.control.keys():
             self.controlTimers[destiny_stopper_id] = {
-                desym.objects.stopper.states.States.Control.LOCKED: 0,
-                desym.objects.stopper.states.States.Control.UNLOCKED: 0,
+                desim.objects.stopper.states.States.Control.LOCKED: 0,
+                desim.objects.stopper.states.States.Control.UNLOCKED: 0,
             }
             self.controlTimersLastUpdate[destiny_stopper_id] = {
-                desym.objects.stopper.states.States.Control.LOCKED: 0,
-                desym.objects.stopper.states.States.Control.UNLOCKED: 0,
+                desim.objects.stopper.states.States.Control.LOCKED: 0,
+                desim.objects.stopper.states.States.Control.UNLOCKED: 0,
             }
 
 
@@ -137,7 +122,7 @@ class CronoController:
         self.simulation = simulation
 
         self.stoppersResults: Dict[
-            desym.objects.stopper.StopperId, StopperCounters
+            desim.objects.stopper.StopperId, StopperCounters
         ] = {}
 
         for stopper_id, stopper in simulation.stoppers.items():
@@ -146,7 +131,7 @@ class CronoController:
         # for conveyor_id, conveyor in simulation.conveyors.items():
         #     self.previous_conveyor_state[conveyor_id] = copy.deepcopy(conveyor.states.state)
 
-    def update_stopper_times(self, stopper: desym.objects.stopper.core.Stopper):
+    def update_stopper_times(self, stopper: desim.objects.stopper.core.Stopper):
         if self.stoppersResults[stopper.id].node != stopper.states.state.node:
             self.stoppersResults[stopper.id].nodeTimers[stopper.states.state.node] += (
                 self.simulation.timed_events_manager.step
@@ -214,9 +199,9 @@ def calculate_busyness(simulation: Simulation):
     for stopper in simulation.stoppers.values():
         if (
             stopper.states.state.node
-            == desym.objects.stopper.states.States.Node.RESERVED
+            == desim.objects.stopper.states.States.Node.RESERVED
             or stopper.states.state.node
-            == desym.objects.stopper.states.States.Node.REST
+            == desim.objects.stopper.states.States.Node.REST
         ):
             stoppers_in_rest += 1
 

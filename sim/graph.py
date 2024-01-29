@@ -1,15 +1,16 @@
 from typing import TYPE_CHECKING, TypedDict
 
-from desym.objects.stopper.core import Stopper
-from desym.core import Simulation
+from desim.objects.stopper import StopperId
+from desim.objects.stopper.core import Stopper
+from desim.core import Simulation
 
 if TYPE_CHECKING:
-    from desym.core import Simulation
+    from desim.core import Simulation
 
 
 class Cycle:
     ForeignStopper = TypedDict(
-        "ForeignStopper", {"stopper": Stopper, "destiny_id": Stopper.StopperId}
+        "ForeignStopper", {"stopper": Stopper, "destiny_id": StopperId}
     )
 
     def __init__(self, stoppers: list[Stopper], core: Simulation) -> None:
