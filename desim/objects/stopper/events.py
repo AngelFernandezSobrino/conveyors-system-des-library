@@ -1,18 +1,27 @@
 from __future__ import annotations
 import copy
+import logging
 from typing import TYPE_CHECKING
 
-from wandb import _set_internal_process
+from desim.objects.stopper.states import States
 
-
-from desym.objects.stopper.states import States
+from desim.logger import (
+    LOGGER_BASE_NAME,
+    LOGGER_INPUT_EVENT_COLOR,
+    LOGGER_INPUT_GROUP_NAME,
+    LOGGER_NAME_PADDING,
+    LOGGER_OUTPUT_EVENT_COLOR,
+    LOGGER_STOPPER_COLOR,
+    LOGGER_STOPPER_NAME,
+    get_logger,
+)
 
 if TYPE_CHECKING:
-    from desym.objects.container import Container
-    from desym.objects.stopper import StopperId
+    from desim.objects.container import Container
+    from desim.objects.stopper import StopperId
     from . import core
-    import desym.objects.conveyor
-    import desym.objects.stopper
+    import desim.objects.conveyor
+    import desim.objects.stopper
 
 # This classes implement the events connections of the stoppers to other stoppers and to the behavior controller
 
@@ -21,10 +30,23 @@ class InputEvents:
     def __init__(self, core: core.Stopper) -> None:
         self.c = core
 
+        self.logger = logging.getLogger(
+            f"{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME}.{self.c.id}.evins"
+        )
+
+        self.logger.propagate = False
+        logFormatter = logging.Formatter(
+            f"{LOGGER_STOPPER_COLOR}{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME} - {self.c.id: <{LOGGER_NAME_PADDING}s} - {LOGGER_INPUT_EVENT_COLOR}{LOGGER_INPUT_GROUP_NAME} - "
+            + "{message}",
+            style="{",
+        )
+        consoleHandler = logging.StreamHandler()
+        consoleHandler.setFormatter(logFormatter)
+        self.logger.addHandler(consoleHandler)
+
     def input(self, container: Container) -> None:
+        self.logger.debug("Input")
         actual_state = copy.deepcopy(self.c.states.state)
-        if self.c.debug:
-            print(f"{self.c} input {container}")
         match self.c.states.state:
             case States(States.Node.RESERVED):
                 if self.c.container is not None:
@@ -46,6 +68,7 @@ class InputEvents:
                 )
 
     def reserve(self) -> None:
+        self.logger.debug("Reserved")
         actual_state = copy.deepcopy(self.c.states.state)
         match self.c.states.state:
             case States(node=States.Node.REST):
@@ -67,8 +90,9 @@ class InputEvents:
                 )
 
     def destiny_available(
-        self, destiny_conveyor_id: desym.objects.conveyor.ConveyorId
+        self, destiny_conveyor_id: desim.objects.conveyor.ConveyorId
     ) -> None:
+        self.logger.debug("Destiny available")
         actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id, conveyor in self.c.output_conveyors.items():
             if conveyor.id == destiny_conveyor_id:
@@ -76,26 +100,31 @@ class InputEvents:
                 self.c.states.go_state(actual_state)
 
     def destiny_not_available(
-        self, destiny_conveyor_id: desym.objects.stopper.StopperId
+        self, destiny_conveyor_id: desim.objects.stopper.StopperId
     ) -> None:
+        self.logger.debug("Destiny not available")
         actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id, conveyor in self.c.output_conveyors.items():
             if conveyor.id == destiny_conveyor_id:
+                if actual_state.destinies[destiny_id] == States.Destiny.NOT_AVAILABLE:
+                    return
                 actual_state.destinies[destiny_id] = States.Destiny.NOT_AVAILABLE
                 self.c.states.go_state(actual_state)
 
     def control_lock_by_destiny_id(
-        self, destiny_id_to_lock: desym.objects.stopper.StopperId
+        self, destiny_id_to_lock: desim.objects.stopper.StopperId
     ) -> None:
+        self.logger.debug("Control lock")
         actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id in self.c.output_conveyors:
             if destiny_id == destiny_id_to_lock:
                 actual_state.control[destiny_id] = States.Control.LOCKED
-                self.c.states.go_state(actual_state)
+                self.c.states.go_state(actual_state, False)
 
     def control_unlock_by_destiny_id(
-        self, context, destiny_id_to_lock: desym.objects.stopper.StopperId
+        self, context, destiny_id_to_lock: desim.objects.stopper.StopperId
     ) -> None:
+        self.logger.debug("Control unlock")
         actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id in self.c.output_conveyors:
             if destiny_id == destiny_id_to_lock:
@@ -103,17 +132,19 @@ class InputEvents:
                 self.c.states.go_state(actual_state)
 
     def control_lock_by_conveyor_id(
-        self, destiny_destiny_id: desym.objects.conveyor.ConveyorId
+        self, destiny_destiny_id: desim.objects.conveyor.ConveyorId
     ) -> None:
+        self.logger.debug("Control lock")
         actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id, conveyor in self.c.output_conveyors.items():
             if conveyor.id == destiny_destiny_id:
                 actual_state.control[destiny_id] = States.Control.LOCKED
-                self.c.states.go_state(actual_state)
+                self.c.states.go_state(actual_state, False)
 
     def control_unlock_by_conveyor_id(
-        self, destiny_conveyor_id: desym.objects.conveyor.ConveyorId
+        self, destiny_conveyor_id: desim.objects.conveyor.ConveyorId
     ) -> None:
+        self.logger.debug("Control unlock")
         actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id, conveyor in self.c.output_conveyors.items():
             if conveyor.id == destiny_conveyor_id:
@@ -126,28 +157,35 @@ class OutputEvents:
     def __init__(self, core: core.Stopper) -> None:
         self.c = core
 
+        self.logger = get_logger(
+            f"{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME}.{self.c.id}.evout",
+            f"{LOGGER_STOPPER_COLOR}{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME} - {self.c.id: <10s} - {LOGGER_OUTPUT_EVENT_COLOR}Output - ",
+        )
+
     def not_available(self):
+        self.logger.debug("Not available")
         for _, conveyor in self.c.input_conveyors.items():
             conveyor.input_events.destiny_not_available()
 
     def available(self):
+        self.logger.debug("Available")
         for _, conveyor in self.c.input_conveyors.items():
             conveyor.input_events.destiny_available()
 
-    def output(self, destinyId: StopperId):
+    def reserve(self, destinyId: StopperId):
+        self.logger.debug(f"Reserve {destinyId}")
         if self.c.container is None:
             raise Exception("Fatal Error: Tray is None, WTF")
 
-        self.c.output_conveyors[destinyId].input_events.input()
+        self.c.output_conveyors[destinyId].input_events.reserve()
 
     def moving(self, destinyId: StopperId):
-        if self.c.debug:
-            print(f"{self.c} output to {destinyId}")
+        self.logger.debug(f"Moving {self.c.container} to {destinyId}")
         if self.c.container is None:
             raise Exception("Fatal Error: Tray is None, WTF")
         container = self.c.container
         self.c.container = None
-        self.c.output_conveyors[destinyId].input_events.moving(container)
+        self.c.output_conveyors[destinyId].input_events.input(container)
 
     def end_state(self, old_state: States):
         if (
@@ -161,7 +199,7 @@ class OutputEvents:
         ):
             for destinyId, send in self.c.states.state.sends.items():
                 if send == States.Send.ONGOING:
-                    self.output(destinyId)
+                    self.reserve(destinyId)
         if (
             old_state.node == States.Node.SENDING
             and old_state.node != self.c.states.state.node

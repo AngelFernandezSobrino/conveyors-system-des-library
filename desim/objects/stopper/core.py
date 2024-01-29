@@ -7,23 +7,30 @@ from typing import (
     TYPE_CHECKING,
 )
 
+from desim.logger import (
+    LOGGER_BASE_NAME,
+    LOGGER_STOPPER_COLOR,
+    LOGGER_STOPPER_NAME,
+    get_logger,
+)
+
 from . import events
 from . import states
 
-import desym.objects.stopper
+import desim.objects.stopper
 
 if TYPE_CHECKING:
-    from desym.objects.container import Container
-    from desym.objects.conveyor.core import Conveyor
-    import desym.objects.system
-    from desym.external_function import ExternalFunctionController
-    from desym.events_manager import TimedEventsManager
-    import desym.core
-    import desym.objects.stopper
+    from desim.objects.container import Container
+    from desim.objects.conveyor.core import Conveyor
+    import desim.objects.system
+    from desim.external_function import ExternalFunctionController
+    from desim.events_manager import TimedEventsManager
+    import desim.core
+    import desim.objects.stopper
 
 
 class StopperDescription(TypedDict):
-    destiny: list[desym.objects.stopper.StopperId]
+    destiny: list[desim.objects.stopper.StopperId]
     steps: list[int]
     move_behaviour: list[str]
     rest_steps: list[int]
@@ -37,9 +44,9 @@ ContentType = TypeVar("ContentType")
 class Stopper(Generic[ContentType]):
     def __init__(
         self,
-        id: desym.objects.stopper.StopperId,
+        id: desim.objects.stopper.StopperId,
         description: StopperDescription,
-        simulation: desym.core.Simulation,
+        simulation: desim.core.Simulation,
         external_events_controller: ExternalFunctionController,
         debug,
     ):
@@ -49,8 +56,13 @@ class Stopper(Generic[ContentType]):
         # External function to emit events to extenal system
         self.external_events_controller = external_events_controller
 
+        self.logger = get_logger(
+            f"{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME}.{self.id}",
+            LOGGER_STOPPER_COLOR + "{name: <30s} - ",
+        )
+
         # Globals
-        self.simulation: desym.core.Simulation = simulation
+        self.simulation: desim.core.Simulation = simulation
         self.timed_events_manager: TimedEventsManager = (
             self.simulation.timed_events_manager
         )
@@ -61,8 +73,8 @@ class Stopper(Generic[ContentType]):
             self.simulation.description,
         )
 
-        self.output_conveyors: Dict[desym.objects.stopper.StopperId, Conveyor] = {}
-        self.input_conveyors: Dict[desym.objects.stopper.StopperId, Conveyor] = {}
+        self.output_conveyors: Dict[desim.objects.stopper.StopperId, Conveyor] = {}
+        self.input_conveyors: Dict[desim.objects.stopper.StopperId, Conveyor] = {}
 
         # Container storage pointer
         self.container: Container[ContentType] | None = None
@@ -78,7 +90,7 @@ class Stopper(Generic[ContentType]):
     def set_input_conveyors(
         self,
         input_conveyor: Conveyor,
-        origin_stopper_id: desym.objects.stopper.StopperId,
+        origin_stopper_id: desim.objects.stopper.StopperId,
     ) -> None:
         if input_conveyor not in self.input_conveyors:
             self.input_conveyors[origin_stopper_id] = input_conveyor
@@ -86,7 +98,7 @@ class Stopper(Generic[ContentType]):
     def set_output_conveyors(
         self,
         output_conveyor: Conveyor,
-        destiny_stopper_id: desym.objects.stopper.StopperId,
+        destiny_stopper_id: desim.objects.stopper.StopperId,
     ) -> None:
         if output_conveyor not in self.output_conveyors:
             self.output_conveyors[destiny_stopper_id] = output_conveyor
@@ -108,7 +120,7 @@ class BehaviorInfo:
             self.output_stoppers_ids[k]: v
             for k, v in enumerate(stopper_description["move_behaviour"])
         }
-        self.input_stoppers_ids: list[desym.objects.stopper.StopperId] = []
+        self.input_stoppers_ids: list[desim.objects.stopper.StopperId] = []
         for external_stopper_id, stopper_info in simulation_description.items():
             if stopper_id in stopper_info["destiny"]:
                 self.input_stoppers_ids += [external_stopper_id]

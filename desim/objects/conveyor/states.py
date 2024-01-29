@@ -1,15 +1,28 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
+import logging
 
 from typing import TYPE_CHECKING, Any
-from desym.events_manager import CustomEventListener
+from desim.events_manager import CustomEventListener
+from desim.logger import (
+    LOGGER_BASE_NAME,
+    LOGGER_CONVEYOR_COLOR,
+    LOGGER_CONVEYOR_NAME,
+    LOGGER_NAME_PADDING,
+    LOGGER_STATE_CHANGE_COLOR,
+    LOGGER_STATE_GROUP_NAME,
+    get_logger,
+)
+
+from stringcolor import cs  # type: ignore
 
 
 if TYPE_CHECKING:
-    from desym.objects.stopper import states
+    from desim.objects.stopper import states
     from . import core
     from .core import Conveyor
+
 
 DestinyId = str
 
@@ -32,10 +45,28 @@ class States:
 
     state: S
 
+    def __str__(self) -> str:
+        return f"{self.state.name}"
+
 
 class State:
     def __init__(self, core: core.Conveyor) -> None:
         self.c = core
+        self.logger = get_logger(
+            f"{LOGGER_BASE_NAME}.{LOGGER_CONVEYOR_NAME}.{self.c.id}.state",
+            f"{LOGGER_CONVEYOR_COLOR}{LOGGER_BASE_NAME}.{LOGGER_CONVEYOR_NAME} - {self.c.id: <{LOGGER_NAME_PADDING}s} - {LOGGER_STATE_CHANGE_COLOR}{LOGGER_STATE_GROUP_NAME} - ",
+        )
+
+        self.logger = logging.getLogger(f"desim.conv.{self.c.id}.state")
+        self.logger.propagate = False
+        logFormatter = logging.Formatter(
+            f"{LOGGER_CONVEYOR_COLOR}desim.conv - {self.c.id: <10s} - {LOGGER_STATE_CHANGE_COLOR}State  - "
+            + "{message}",
+            style="{",
+        )
+        consoleHandler = logging.StreamHandler()
+        consoleHandler.setFormatter(logFormatter)
+        self.logger.addHandler(consoleHandler)
 
         self.state: States = States(States.S.AVAILABLE)
 
@@ -43,10 +74,10 @@ class State:
         prev_state = self.state
         self.state = state
 
-        # if self.c.debug:
-        #     print(
-        #         f"--------------------\n{self.c} State change:\n{prev_state}\n{self.state}"
-        #     )
+        if self.c.debug:
+            self.logger.debug(
+                cs(f"{prev_state} -> {self.state}", LOGGER_STATE_CHANGE_COLOR)
+            )
 
         self.c.output_events.end_state(prev_state)
 
@@ -58,5 +89,7 @@ class State:
                     ),
                     self.c.steps,
                 )
+            case States(States.S.NOT_AVAILABLE_BY_MOVING):
+                self.go_state(None, state=States(States.S.MOVING))
             case States(States.S.NOT_AVAILABLE_BY_DESTINY):
                 self.go_state(None, state=States(States.S.NOT_AVAILABLE))
