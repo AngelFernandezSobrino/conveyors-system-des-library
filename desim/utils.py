@@ -1,4 +1,8 @@
-from desym.objects.stopper.core import StopperDescription
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from desim.objects.stopper.core import StopperDescription
 
 system_description_example: dict[str, StopperDescription] = {
     "0": {

@@ -2,40 +2,48 @@ from __future__ import annotations
 from typing import Callable, TYPE_CHECKING
 
 import time
-from desym.events_manager import EventsManager
 
-from desym.external_function import (
+from py import log
+from desim.events_manager import EventsManager
+
+from desim.external_function import (
     ExternalFunctionController,
 )
 
-from desym.events_manager import (
+from desim.events_manager import (
     CustomEventListener,
     Step,
     TimedEventsManager,
 )
-from desym.objects.conveyor.core import Conveyor, ConveyorDescription
-from desym.objects.stopper.core import Stopper
-from desym.objects.container import Container
+from desim.objects.conveyor.core import Conveyor, ConveyorDescription
+from desim.objects.stopper.core import Stopper
+from desim.objects.container import Container
 
 if TYPE_CHECKING:
-    import desym.objects.system
-    import desym.objects.stopper
-    import desym.objects.conveyor
+    import desim.objects.system
+    import desim.objects.stopper
+    import desim.objects.conveyor
 
 
 import logging
 
-logger = logging.getLogger("desym.core")
-logFormatter = logging.Formatter(fmt="%(name)s: %(message)s")
+base_logger = logging.getLogger("desim")
+logFormatter = logging.Formatter("\N{ESC}[0m{name: <30s} - {message}", style="{")
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
-logger.addHandler(consoleHandler)
+base_logger.addHandler(consoleHandler)
+base_logger.setLevel(logging.DEBUG)
+
+base_logger.debug("imported")
+
+logger = logging.getLogger("desim.core")
+logger.debug("imported")
 
 
 class Simulation:
     def __init__(
         self,
-        description: desym.objects.system.SystemDescription,
+        description: desim.objects.system.SystemDescription,
         debug: bool = False,
     ) -> None:
         self.timed_events_manager = TimedEventsManager()
@@ -48,9 +56,9 @@ class Simulation:
 
         # Build simulation graph
 
-        self.stoppers: dict[desym.objects.stopper.StopperId, Stopper] = {}
+        self.stoppers: dict[desim.objects.stopper.StopperId, Stopper] = {}
 
-        self.conveyors: dict[desym.objects.conveyor.ConveyorId, Conveyor] = {}
+        self.conveyors: dict[desim.objects.conveyor.ConveyorId, Conveyor] = {}
 
         for stopper_id, stopper_description in self.description.items():
             self.stoppers[stopper_id] = Stopper(
