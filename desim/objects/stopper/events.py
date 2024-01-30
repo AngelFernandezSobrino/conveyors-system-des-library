@@ -118,6 +118,8 @@ class InputEvents:
         actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id in self.c.output_conveyors:
             if destiny_id == destiny_id_to_lock:
+                if actual_state.control[destiny_id] == States.Control.LOCKED:
+                    return
                 actual_state.control[destiny_id] = States.Control.LOCKED
                 self.c.states.go_state(actual_state, False)
 
@@ -125,9 +127,11 @@ class InputEvents:
         self, context, destiny_id_to_lock: desim.objects.stopper.StopperId
     ) -> None:
         self.logger.debug("Control unlock")
-        actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id in self.c.output_conveyors:
             if destiny_id == destiny_id_to_lock:
+                if self.c.states.state.control[destiny_id] == States.Control.UNLOCKED:
+                    return
+                actual_state = copy.deepcopy(self.c.states.state)
                 actual_state.control[destiny_id] = States.Control.UNLOCKED
                 self.c.states.go_state(actual_state)
 
@@ -135,9 +139,11 @@ class InputEvents:
         self, destiny_destiny_id: desim.objects.conveyor.ConveyorId
     ) -> None:
         self.logger.debug("Control lock")
-        actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id, conveyor in self.c.output_conveyors.items():
             if conveyor.id == destiny_destiny_id:
+                if self.c.states.state.control[destiny_id] == States.Control.LOCKED:
+                    return
+                actual_state = copy.deepcopy(self.c.states.state)
                 actual_state.control[destiny_id] = States.Control.LOCKED
                 self.c.states.go_state(actual_state, False)
 
@@ -145,9 +151,11 @@ class InputEvents:
         self, destiny_conveyor_id: desim.objects.conveyor.ConveyorId
     ) -> None:
         self.logger.debug("Control unlock")
-        actual_state = copy.deepcopy(self.c.states.state)
         for destiny_id, conveyor in self.c.output_conveyors.items():
             if conveyor.id == destiny_conveyor_id:
+                if self.c.states.state.control[destiny_id] == States.Control.UNLOCKED:
+                    return
+                actual_state = copy.deepcopy(self.c.states.state)
                 actual_state.control[destiny_id] = States.Control.UNLOCKED
                 self.c.states.go_state(actual_state)
 
