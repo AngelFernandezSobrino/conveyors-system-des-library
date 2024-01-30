@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from pyparsing import C
 import desim.events_manager as tem
 import sim.results_controller
 import sim.item
 import desim.objects.container
 
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, Literal, Set
 
 if TYPE_CHECKING:
     import desim.objects.stopper
@@ -98,16 +97,46 @@ class SimulationController:
             "PT10": [tem.CustomEventListener(self.bifurcation_pt10)],
             "PT16": [tem.CustomEventListener(self.bifurcation_pt16)],
             "DIR17": [
-                tem.CustomEventListener(self.delay, (), {"time": 10}),
-                tem.CustomEventListener(self.process_01),
+                tem.CustomEventListener(
+                    self.delay,
+                    (),
+                    {
+                        "time": 10,
+                        "state": "0",
+                        "item_type": ProductTypeReferences.product_1,
+                    },
+                ),
+                tem.CustomEventListener(
+                    self.process, (), {"product_type": ProductTypeReferences.product_2}
+                ),
             ],
             "DIR13": [
-                tem.CustomEventListener(self.delay, (), {"time": 10}),
-                tem.CustomEventListener(self.process_02),
+                tem.CustomEventListener(
+                    self.delay,
+                    (),
+                    {
+                        "time": 10,
+                        "state": "0",
+                        "item_type": ProductTypeReferences.product_2,
+                    },
+                ),
+                tem.CustomEventListener(
+                    self.process, (), {"product_type": ProductTypeReferences.product_2}
+                ),
             ],
             "DIR19": [
-                tem.CustomEventListener(self.delay, (), {"time": 10}),
-                tem.CustomEventListener(self.process_03),
+                tem.CustomEventListener(
+                    self.delay,
+                    (),
+                    {
+                        "time": 10,
+                        "state": "0",
+                        "item_type": ProductTypeReferences.product_3,
+                    },
+                ),
+                tem.CustomEventListener(
+                    self.process, (), {"product_type": ProductTypeReferences.product_3}
+                ),
             ],
         }
 
@@ -118,19 +147,19 @@ class SimulationController:
                 )
 
     def delay(self, stopper: Stopper, time: int = 0):
-        if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
-        ):
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
             return
 
-        if stopper.container is None:
-            raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
+        product = self.get_container_content_filter(container, state="1")
 
-        if self.delay_helper[stopper.id] == stopper.container.id:
+        if product is None:
             return
 
-        self.delay_helper[stopper.id] = stopper.container.id
+        if self.delay_helper[stopper.id] == container.id:
+            return
+
+        self.delay_helper[stopper.id] = container.id
         for destiny_stopper_id in stopper.output_conveyors.keys():
             if (
                 stopper.states.state.control[destiny_stopper_id]
@@ -146,6 +175,12 @@ class SimulationController:
                 )
 
     def external_container_input(self, context):
+        if (
+            self.simulation.stoppers["PT01"].states.state.node
+            != desim.objects.stopper.states.States.Node.REST
+        ):
+            return
+
         global tray_index
         if tray_index < 15:
             new_tray = desim.objects.container.Container[Product](str(tray_index), None)
@@ -156,46 +191,34 @@ class SimulationController:
             self.simulation.stoppers["PT01"].input_events.input(new_tray)
 
     def empty_tray(self, stopper: Stopper[Product]):
-        if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
-        ):
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
+            return
+        product = self.get_container_content_filter(container, state="1")
+
+        if product is None:
             return
 
-        if not stopper.container:
-            raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
-        if stopper.container is None:
-            return
-        if stopper.container.content is None:
-            return
-        if stopper.container.content.state != "0":
-            return
+        logger.debug(f"Emptying {stopper.container} in {stopper}")
 
-        if stopper.container.content and stopper.container.content.state == "1":
-            logger.debug(f"Emptying {stopper.container} in {stopper}")
-
-            stopper.simulation.events_manager.call(
-                "production", stopper.container.content
-            )
-            stopper.container.content = None
+        stopper.simulation.events_manager.call("production", product)
+        container.content = None
 
     def fill_tray_one_product(self, stopper: Stopper[Product]):
-        if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
-        ):
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
+            return
+        product = self.get_container_content_filter(container, no_content=True)
+
+        if product is not True:
             return
 
-        if not stopper.container:
-            raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
         global product_serial_number_database
         logger.debug(
             f"Filling {stopper.container} in {stopper} with product id {product_serial_number_database[product_type_index]} of type {product_type_index.name}"
         )
-        if not stopper.container:
-            return
 
-        if stopper.container.load(
+        if container.load(
             Product(
                 str(product_serial_number_database[product_type_index]),
                 ProductTypeReferences.product_1,
@@ -205,26 +228,21 @@ class SimulationController:
             product_serial_number_database[product_type_index] += 1
 
     def fill_tray_three_products(self, stopper: Stopper[Product]):
-        if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
-        ):
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
             return
+        product = self.get_container_content_filter(container, no_content=True)
 
-        if not stopper.container:
-            raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
+        if product is not True:
+            return
 
         global product_type_index, product_serial_number_database
         logger.debug(
             f"Filling {stopper.container} in {stopper} with product id {product_serial_number_database[product_type_index]} of type {product_type_index.name}"
         )
-        if not stopper.container:
-            return
-        if stopper.container.content:
-            return
 
         if product_type_index == ProductTypeReferences.product_1:
-            if stopper.container.load(
+            if container.load(
                 Product(
                     str(product_serial_number_database[product_type_index]),
                     ProductTypeReferences.product_1,
@@ -234,7 +252,7 @@ class SimulationController:
                 product_serial_number_database[product_type_index] += 1
             product_type_index = ProductTypeReferences.product_2
         elif product_type_index == ProductTypeReferences.product_2:
-            if stopper.container.load(
+            if container.load(
                 Product(
                     str(product_serial_number_database[product_type_index]),
                     ProductTypeReferences.product_2,
@@ -244,7 +262,7 @@ class SimulationController:
                 product_serial_number_database[product_type_index] += 1
             product_type_index = ProductTypeReferences.product_3
         elif product_type_index == ProductTypeReferences.product_3:
-            if stopper.container.load(
+            if container.load(
                 Product(
                     str(product_serial_number_database[product_type_index]),
                     ProductTypeReferences.product_3,
@@ -254,163 +272,129 @@ class SimulationController:
                 product_serial_number_database[product_type_index] += 1
             product_type_index = ProductTypeReferences.product_1
 
-    def process_01(self, stopper: Stopper[Product]):
-        if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
-        ):
+    def process(self, stopper: Stopper[Product], product_type: ProductTypeReferences):
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
             return
+        product = self.get_container_content_filter(
+            container, state="0", item_type=product_type
+        )
 
-        if not stopper.container:
-            raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
-        if not (stopper.container and stopper.container.content):
-            return
-
-        if (
-            stopper.container.content.item_type == ProductTypeReferences.product_1
-            and stopper.container.content.state == "0"
-        ):
-            logger.debug(f"Process 01: Processing {stopper.container} in {stopper}")
-            stopper.container.content.update_state("1")
-
-    def process_02(self, stopper: Stopper[Product]):
-        if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
-        ):
-            return
-
-        if not stopper.container:
-            raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
-        if (
-            stopper.container
-            and stopper.container.content
-            and stopper.container.content.item_type == ProductTypeReferences.product_2
-            and stopper.container.content.state == "0"
-        ):
-            logger.debug(f"Process 02: Processing {stopper.container} in {stopper}")
-            stopper.container.content.update_state("1")
-
-    def process_03(self, stopper: Stopper[Product]):
-        if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
-        ):
-            return
-
-        if not stopper.container:
-            raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
-        if (
-            stopper.container
-            and stopper.container.content
-            and stopper.container.content.item_type == ProductTypeReferences.product_3
-            and stopper.container.content.state == "0"
-        ):
-            logger.debug(f"Process 03: Processing {stopper.container} in {stopper}")
-            stopper.container.content.update_state("1")
+        if isinstance(product, Product):
+            logger.debug(
+                f"Process {product_type.name}: Processing {stopper.container} in {stopper}"
+            )
+            product.update_state("1")
 
     def bifurcation_pt05(self, stopper: Stopper[Product]):
-        logger.debug(f"Bifurcation PT05: {stopper.states.state}")
-        if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
-        ):
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
             return
 
-        if not stopper.container:
-            raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
+        logger.debug(f"Bifurcation PT05: {stopper.states.state}")
 
-        if stopper.container.content:
+        if self.get_container_content_filter(container) is not None:
             logger.debug(f"Bifurcation PT05: Moving {stopper.container} to DIR08")
-            if (
-                stopper.states.state.control["DIR05"]
-                != desim.objects.stopper.states.States.Control.LOCKED
-            ):
-                stopper.input_events.control_lock_by_destiny_id("DIR05")
+            stopper.input_events.control_lock_by_destiny_id("DIR05")
+            stopper.input_events.control_unlock_by_destiny_id(None, "DIR08")
+            return
 
-            if (
-                stopper.states.state.control["DIR08"]
-                != desim.objects.stopper.states.States.Control.UNLOCKED
-            ):
-                stopper.input_events.control_unlock_by_destiny_id(None, "DIR08")
-        else:
-            logger.debug(f"Bifurcation PT05: Moving {stopper.container} to DIR05")
-
-            if (
-                stopper.states.state.control["DIR05"]
-                != desim.objects.stopper.states.States.Control.UNLOCKED
-            ):
-                stopper.input_events.control_unlock_by_destiny_id(None, "DIR05")
-
-            if (
-                stopper.states.state.control["DIR08"]
-                != desim.objects.stopper.states.States.Control.LOCKED
-            ):
-                stopper.input_events.control_lock_by_destiny_id("DIR08")
+        logger.debug(f"Bifurcation PT05: Moving {stopper.container} to DIR05")
+        stopper.input_events.control_unlock_by_destiny_id(None, "DIR05")
+        stopper.input_events.control_lock_by_destiny_id("DIR08")
 
     def bifurcation_pt09(self, stopper: Stopper[Product]):
-        if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
-        ):
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
             return
-
-        if not stopper.container:
-            raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
         if (
-            stopper.container
-            and stopper.container.content
-            and stopper.container.content.item_type == ProductTypeReferences.product_1
-            and stopper.container.content.state == "0"
+            self.get_container_content_filter(
+                container, state="0", item_type=ProductTypeReferences.product_2
+            )
+            is not None
         ):
             logger.debug(f"Bifurcation PT09: Moving {stopper.container} to DIR11")
             stopper.input_events.control_lock_by_destiny_id("DIR11")
             stopper.input_events.control_unlock_by_destiny_id(None, "DIR14")
-        else:
-            logger.debug(f"Bifurcation PT09: Moving {stopper.container} to DIR14")
-            stopper.input_events.control_lock_by_destiny_id("DIR14")
-            stopper.input_events.control_unlock_by_destiny_id(None, "DIR11")
+            return
+        logger.debug(f"Bifurcation PT09: Moving {stopper.container} to DIR14")
+        stopper.input_events.control_lock_by_destiny_id("DIR14")
+        stopper.input_events.control_unlock_by_destiny_id(None, "DIR11")
 
     def bifurcation_pt10(self, stopper: Stopper[Product]):
-        if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
-        ):
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
             return
-
-        if not stopper.container:
-            raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
         if (
-            stopper.container
-            and stopper.container.content
-            and stopper.container.content.item_type == ProductTypeReferences.product_3
-            and stopper.container.content.state == "0"
+            self.get_container_content_filter(
+                container, state="0", item_type=ProductTypeReferences.product_3
+            )
+            is not None
         ):
             logger.debug(f"Bifurcation PT10: Moving {stopper.container} to DIR15")
             stopper.input_events.control_lock_by_destiny_id("DIR13")
             stopper.input_events.control_unlock_by_destiny_id(None, "DIR15")
-        else:
-            logger.debug(f"Bifurcation PT10: Moving {stopper.container} to DIR13")
-            stopper.input_events.control_lock_by_destiny_id("DIR15")
-            stopper.input_events.control_unlock_by_destiny_id(None, "DIR13")
+            return
+        logger.debug(f"Bifurcation PT10: Moving {stopper.container} to DIR13")
+        stopper.input_events.control_lock_by_destiny_id("DIR15")
+        stopper.input_events.control_unlock_by_destiny_id(None, "DIR13")
 
     def bifurcation_pt16(self, stopper: Stopper[Product]):
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
+            return
+
+        if self.get_container_content_filter(container, state="1") is not None:
+            logger.debug(f"Bifurcation PT16: Moving {stopper.container} to DIR07")
+            stopper.input_events.control_lock_by_destiny_id("PT17")
+            stopper.input_events.control_unlock_by_destiny_id(None, "DIR07")
+            return
+
+        logger.debug(f"Bifurcation PT16: Moving {stopper.container} to PT17")
+        stopper.input_events.control_lock_by_destiny_id("DIR07")
+        stopper.input_events.control_unlock_by_destiny_id(None, "PT17")
+
+    def get_container_content_filter(
+        self,
+        container: desim.objects.container.Container[Product],
+        no_content: bool = False,
+        state: str | None = None,
+        item_type: ProductTypeReferences | None = None,
+    ) -> Product | None | Literal[True]:
+        if container.content is None:
+            if no_content:
+                return True
+            return None
+
+        if state is not None and container.content.state != state:
+            return None
+
+        if item_type is not None and container.content.item_type != item_type:
+            return None
+
+        return container.content
+
+    def get_valid_occupied_container(
+        self, stopper: Stopper[Product]
+    ) -> desim.objects.container.Container[Product] | None:
+        if not self.check_stopper_ocuppied(stopper):
+            return None
+
+        return self.raise_on_stopper_container_not_present(stopper)
+
+    def check_stopper_ocuppied(self, stopper: Stopper[Product]):
         if (
             stopper.states.state.node
             != desim.objects.stopper.states.States.Node.OCCUPIED
         ):
-            return
+            return False
 
-        if not stopper.container:
+        return True
+
+    def raise_on_stopper_container_not_present(
+        self, stopper: Stopper[Product]
+    ) -> desim.objects.container.Container[Product]:
+        if stopper.container is None:
             raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
-        if not stopper.container:
-            return
 
-        if not stopper.container.content or stopper.container.content.state == "1":
-            logger.debug(f"Bifurcation PT16: Moving {stopper.container} to DIR07")
-            stopper.input_events.control_lock_by_destiny_id("PT17")
-            stopper.input_events.control_unlock_by_destiny_id(None, "DIR07")
-        else:
-            logger.debug(f"Bifurcation PT16: Moving {stopper.container} to DIR07")
-            stopper.input_events.control_lock_by_destiny_id("DIR07")
-            stopper.input_events.control_unlock_by_destiny_id(None, "PT17")
+        return stopper.container
