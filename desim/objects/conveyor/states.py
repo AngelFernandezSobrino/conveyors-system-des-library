@@ -15,8 +15,6 @@ from desim.logger import (
     get_logger,
 )
 
-from stringcolor import cs  # type: ignore
-
 
 if TYPE_CHECKING:
     from desim.objects.stopper import states
@@ -75,9 +73,7 @@ class State:
         self.state = state
 
         if self.c.debug:
-            self.logger.debug(
-                cs(f"{prev_state} -> {self.state}", LOGGER_STATE_CHANGE_COLOR)
-            )
+            self.logger.debug(f"{prev_state} -> {self.state}")
 
         self.c.output_events.end_state(prev_state)
 

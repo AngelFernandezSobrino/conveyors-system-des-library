@@ -6,8 +6,6 @@ from desim.logger import LOGGER_BASE_NAME, LOGGER_CONVEYOR_COLOR, LOGGER_CONVEYO
 
 from .states import States
 
-from stringcolor import cs  # type: ignore
-
 if TYPE_CHECKING:
     from . import core
     import desim.objects.container
