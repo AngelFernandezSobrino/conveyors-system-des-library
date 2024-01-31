@@ -63,11 +63,13 @@ class SimulationController:
             desim.objects.stopper.StopperId, list[tem.CustomEventListener]
         ] = {
             "DIR04": [
-                tem.CustomEventListener(self.delay, (), {"time": 10}),
+                tem.CustomEventListener(self.delay, (), {"time": 10, "state": "1"}),
                 tem.CustomEventListener(self.empty_tray),
             ],
             "PT06": [
-                tem.CustomEventListener(self.delay, (), {"time": 10}),
+                tem.CustomEventListener(
+                    self.delay, (), {"time": 10, "no_content": True}
+                ),
                 tem.CustomEventListener(
                     self.fill_tray_three_products,
                 ),
@@ -91,7 +93,7 @@ class SimulationController:
                     },
                 ),
                 tem.CustomEventListener(
-                    self.process, (), {"product_type": ProductTypeReferences.product_2}
+                    self.process, (), {"product_type": ProductTypeReferences.product_1}
                 ),
             ],
             "DIR13": [
@@ -130,20 +132,31 @@ class SimulationController:
                     stopper_id, event
                 )
 
-    def delay(self, stopper: Stopper, time: int = 0):
+    def delay(
+        self,
+        stopper: Stopper,
+        time: int = 0,
+        no_content: bool = False,
+        state: str | None = None,
+        item_type: ProductTypeReferences | None = None,
+    ):
         container = self.get_valid_occupied_container(stopper)
         if container is None:
-            return
-
-        product = self.get_container_content_filter(container, state="1")
-
-        if product is None:
             return
 
         if self.delay_helper[stopper.id] == container.id:
             return
 
         self.delay_helper[stopper.id] = container.id
+
+        if state is not None:
+            product = self.get_container_content_filter(
+                container, no_content=no_content, state=state, item_type=item_type
+            )
+
+            if product is None:
+                return
+
         for destiny_stopper_id in stopper.output_conveyors.keys():
             if (
                 stopper.states.state.control[destiny_stopper_id]
@@ -293,17 +306,18 @@ class SimulationController:
             return
         if (
             self.get_container_content_filter(
-                container, state="0", item_type=ProductTypeReferences.product_2
+                container, state="0", item_type=ProductTypeReferences.product_1
             )
             is not None
         ):
-            logger.debug(f"Bifurcation PT09: Moving {stopper.container} to DIR11")
-            stopper.input_events.control_lock_by_destiny_id("DIR11")
+            logger.debug(f"Bifurcation PT09: Moving {stopper.container} to DIR14")
             stopper.input_events.control_unlock_by_destiny_id(None, "DIR14")
+            stopper.input_events.control_lock_by_destiny_id("DIR11")
             return
-        logger.debug(f"Bifurcation PT09: Moving {stopper.container} to DIR14")
-        stopper.input_events.control_lock_by_destiny_id("DIR14")
+
+        logger.debug(f"Bifurcation PT09: Moving {stopper.container} to DIR11")
         stopper.input_events.control_unlock_by_destiny_id(None, "DIR11")
+        stopper.input_events.control_lock_by_destiny_id("DIR14")
 
     def bifurcation_pt10(self, stopper: Stopper[Product]):
         container = self.get_valid_occupied_container(stopper)
@@ -319,6 +333,7 @@ class SimulationController:
             stopper.input_events.control_lock_by_destiny_id("DIR13")
             stopper.input_events.control_unlock_by_destiny_id(None, "DIR15")
             return
+
         logger.debug(f"Bifurcation PT10: Moving {stopper.container} to DIR13")
         stopper.input_events.control_lock_by_destiny_id("DIR15")
         stopper.input_events.control_unlock_by_destiny_id(None, "DIR13")
