@@ -17,6 +17,7 @@
             "type": "python",
             "request": "launch",
             "program": "sim/main.py",
+            "args": ["--verbose"],
             "console": "integratedTerminal",
             "justMyCode": false
         }
