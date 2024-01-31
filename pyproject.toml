@@ -2,7 +2,7 @@
 name = "logistics-conveyors-des-library"
 version = "0.1.0"
 description = ""
-authors = ["Ángel Fernández Sobrino <fernandezsobrinoangel@gmail.com>"]
+authors = ["Angel Fernandez Sobrino <fernandezsobrinoangel@gmail.com>"]
 readme = "README.md"
 packages = [{include = "sim"}]
 
@@ -33,7 +33,8 @@ tests = "poetry run pytest"
 tests-cov = "poetry run pytest --cov=sim --cov-report=term"
 lint = "poetry run black ./sim/* ./tests/*"
 types = "poetry run mypy ./desym ./tests"
-sim = "poetry run python sim/main.py"
+sim = "poetry run python -OO sim/main.py"
+simv = "poetry run python sim/main.py --verbose"
 rl = "poetry run python rl_training.py"
 
 [build-system]
