@@ -64,6 +64,7 @@ class SimulationController:
         self.stopper_external_functions: dict[
             desim.objects.stopper.StopperId, list[tem.CustomEventListener]
         ] = {
+            "PT01": [tem.CustomEventListener(self.external_container_input)],
             "DIR04": [
                 tem.CustomEventListener(self.delay, (), {"time": 10, "state": "1"}),
                 tem.CustomEventListener(self.empty_tray),
@@ -181,13 +182,15 @@ class SimulationController:
             return
 
         global tray_index
-        if tray_index < 15:
+        if tray_index < 10:
             new_tray = desim.objects.container.Container[Product](str(tray_index), None)
             tray_index += 1
-            logger.debug(f"External container input {new_tray}")
+            logger.debug(f"External container {new_tray} created")
             self.simulation.containers.append(new_tray)
+            logger.debug(f"Reserve PT01 with {new_tray}")
             self.simulation.stoppers["PT01"].input_events.reserve()
-            self.simulation.stoppers["PT01"].input_events.input(new_tray)
+            logger.debug(f"Send to PT01 with {new_tray}")
+            self.simulation.stoppers["PT01"].input_events.receive(new_tray)
 
     def empty_tray(self, stopper: Stopper[Product]):
         container = self.get_valid_occupied_container(stopper)

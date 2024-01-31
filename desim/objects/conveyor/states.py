@@ -36,10 +36,11 @@ DestinyId = str
 class States:
     class S(Enum):
         AVAILABLE = 1
-        NOT_AVAILABLE_BY_DESTINY = 2
+        # NOT_AVAILABLE_BY_DESTINY = 2
         NOT_AVAILABLE_BY_MOVING = 3
         MOVING = 4
         NOT_AVAILABLE = 5
+        WAITING_RECEIVE = 6
 
     state: S
 
@@ -56,15 +57,24 @@ class State:
         )
 
         self.state: States = States(States.S.AVAILABLE)
+        self.state_change_id = 0
 
     def go_state(self, context: Any, state: States) -> None:
+        if self.c.debug:
+            self.logger.debug(f"From {self.state} -> To {state}")
+        if state == self.state:
+            return
+
+        last_state_change_id = self.state_change_id
+        self.state_change_id += 1
+
         prev_state = self.state
         self.state = state
 
-        if self.c.debug:
-            self.logger.debug(f"{prev_state} -> {self.state}")
-
         self.c.output_events.end_state(prev_state)
+
+        if self.state_change_id != last_state_change_id + 1:
+            return
 
         match self.state:
             case States(States.S.MOVING):
@@ -74,7 +84,7 @@ class State:
                     ),
                     self.c.steps,
                 )
+                return
             case States(States.S.NOT_AVAILABLE_BY_MOVING):
-                self.go_state(None, state=States(States.S.MOVING))
-            case States(States.S.NOT_AVAILABLE_BY_DESTINY):
-                self.go_state(None, state=States(States.S.NOT_AVAILABLE))
+                self.go_state(None, state=States(States.S.WAITING_RECEIVE))
+                return

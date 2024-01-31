@@ -148,16 +148,17 @@ class StateController:
 
         self.state_change_id = 0
 
-    def go_state(self, state: States, side_effects=True) -> None:
+    def go_state(self, next_state: States, side_effects=True) -> None:
+
+        changes = self.state.get_changes(next_state)
+        if changes == "":
+            return
+
         prev_state = self.state
-        self.state = state
+        self.state = next_state
 
         last_state_change_id = self.state_change_id
         self.state_change_id += 1
-
-        if self.c.debug:
-            self.logger.debug(f"{prev_state.get_changes(self.state)}")
-            self.logger.debug(f"Prev state: {prev_state}")
 
         self.c.output_events.end_state(prev_state)
 
@@ -179,7 +180,8 @@ class StateController:
                         actual_state.sends[destinyId] = States.Send.ONGOING
                         actual_state.destinies[destinyId] = States.Destiny.NOT_AVAILABLE
                         self.go_state(actual_state)
-            case States(States.Node.SENDING, sends=sends, destinies=destinies):
+                        return
+            case States(States.Node.SENDING, sends, destinies):
                 for destiny_id, destiny_state in destinies.items():
                     if sends[destiny_id] == States.Send.ONGOING:
                         actual_state.sends[destiny_id] = States.Send.DELAY
