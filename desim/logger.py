@@ -15,7 +15,7 @@ LOGGER_INPUT_GROUP_NAME: str = "Input "
 LOGGER_OUTPUT_GROUP_NAME: str = "Output"
 LOGGER_STATE_GROUP_NAME: str = "State "
 
-LOGGER_NAME_PADDING: int = 30
+LOGGER_NAME_PADDING: int = 11
 
 
 def get_logger(name: str, formater_without_message: str) -> logging.Logger:

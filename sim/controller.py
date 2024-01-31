@@ -59,22 +59,6 @@ class SimulationController:
 
         self.external_functions = {0: [self.external_container_input_function]}
 
-        # def stopper_logger(context: Stopper):
-        #     logger.debug(f"Stopper {context} status change to {context.states.state}")
-
-        # def conveyor_logger(context: desym.objects.conveyor.Conveyor):
-        #     logger.debug(f"Conveyor {context} status change to {context.states.state}")
-
-        # for stopper_id, stopper in simulation.stoppers.items():
-        #     self.simulation.stopper_external_events_controller.register_event(
-        #         stopper_id, tem.CustomEventListener(stopper_logger, (), {})
-        #     )
-
-        # for conveyor_id, conveyor in simulation.conveyors.items():
-        #     self.simulation.conveyor_external_events_controller.register_event(
-        #         conveyor_id, tem.CustomEventListener(conveyor_logger, (), {})
-        #     )
-
         self.stopper_external_functions: dict[
             desim.objects.stopper.StopperId, list[tem.CustomEventListener]
         ] = {

@@ -55,17 +55,6 @@ class State:
             f"{LOGGER_CONVEYOR_COLOR}{LOGGER_BASE_NAME}.{LOGGER_CONVEYOR_NAME} - {self.c.id: <{LOGGER_NAME_PADDING}s} - {LOGGER_STATE_CHANGE_COLOR}{LOGGER_STATE_GROUP_NAME} - ",
         )
 
-        self.logger = logging.getLogger(f"desim.conv.{self.c.id}.state")
-        self.logger.propagate = False
-        logFormatter = logging.Formatter(
-            f"{LOGGER_CONVEYOR_COLOR}desim.conv - {self.c.id: <10s} - {LOGGER_STATE_CHANGE_COLOR}State  - "
-            + "{message}",
-            style="{",
-        )
-        consoleHandler = logging.StreamHandler()
-        consoleHandler.setFormatter(logFormatter)
-        self.logger.addHandler(consoleHandler)
-
         self.state: States = States(States.S.AVAILABLE)
 
     def go_state(self, context: Any, state: States) -> None:

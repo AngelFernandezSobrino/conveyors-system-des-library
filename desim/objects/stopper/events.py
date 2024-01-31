@@ -11,6 +11,7 @@ from desim.logger import (
     LOGGER_INPUT_GROUP_NAME,
     LOGGER_NAME_PADDING,
     LOGGER_OUTPUT_EVENT_COLOR,
+    LOGGER_OUTPUT_GROUP_NAME,
     LOGGER_STOPPER_COLOR,
     LOGGER_STOPPER_NAME,
     get_logger,
@@ -30,19 +31,10 @@ class InputEvents:
     def __init__(self, core: core.Stopper) -> None:
         self.c = core
 
-        self.logger = logging.getLogger(
-            f"{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME}.{self.c.id}.evins"
+        self.logger = get_logger(
+            f"{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME}.{self.c.id}.evins",
+            f"{LOGGER_STOPPER_COLOR}{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME} - {self.c.id: <{LOGGER_NAME_PADDING}s} - {LOGGER_INPUT_EVENT_COLOR}{LOGGER_INPUT_GROUP_NAME} - ",
         )
-
-        self.logger.propagate = False
-        logFormatter = logging.Formatter(
-            f"{LOGGER_STOPPER_COLOR}{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME} - {self.c.id: <{LOGGER_NAME_PADDING}s} - {LOGGER_INPUT_EVENT_COLOR}{LOGGER_INPUT_GROUP_NAME} - "
-            + "{message}",
-            style="{",
-        )
-        consoleHandler = logging.StreamHandler()
-        consoleHandler.setFormatter(logFormatter)
-        self.logger.addHandler(consoleHandler)
 
     def input(self, container: Container) -> None:
         self.logger.debug("Input")
@@ -167,7 +159,7 @@ class OutputEvents:
 
         self.logger = get_logger(
             f"{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME}.{self.c.id}.evout",
-            f"{LOGGER_STOPPER_COLOR}{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME} - {self.c.id: <10s} - {LOGGER_OUTPUT_EVENT_COLOR}Output - ",
+            f"{LOGGER_STOPPER_COLOR}{LOGGER_BASE_NAME}.{LOGGER_STOPPER_NAME} - {self.c.id: <{LOGGER_NAME_PADDING}s} - {LOGGER_OUTPUT_EVENT_COLOR}{LOGGER_OUTPUT_GROUP_NAME} - ",
         )
 
     def not_available(self):

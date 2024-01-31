@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from desim.logger import LOGGER_BASE_NAME, LOGGER_CONVEYOR_COLOR, LOGGER_CONVEYOR_NAME, LOGGER_INPUT_EVENT_COLOR, LOGGER_INPUT_GROUP_NAME, LOGGER_NAME_PADDING, LOGGER_OUTPUT_EVENT_COLOR, get_logger  # type: ignore
+from desim.logger import LOGGER_BASE_NAME, LOGGER_CONVEYOR_COLOR, LOGGER_CONVEYOR_NAME, LOGGER_INPUT_EVENT_COLOR, LOGGER_INPUT_GROUP_NAME, LOGGER_NAME_PADDING, LOGGER_OUTPUT_EVENT_COLOR, LOGGER_OUTPUT_GROUP_NAME, get_logger  # type: ignore
 
 from .states import States
 
@@ -99,18 +99,11 @@ class InputEvents:
 class OutputEvents:
     def __init__(self, core: core.Conveyor) -> None:
         self.c = core
-
-        self.logger = logging.getLogger(f"desim.conv.{self.c.id}.evout")
-        self.logger.propagate = False
-        logFormatter = logging.Formatter(
-            f"{LOGGER_CONVEYOR_COLOR}desim.conv - {self.c.id: <10s} - {LOGGER_OUTPUT_EVENT_COLOR}Output - "
-            + "{message}",
-            style="{",
+        self.logger = get_logger(
+            f"{LOGGER_BASE_NAME}.{LOGGER_CONVEYOR_NAME}.{self.c.id}.evout",
+            f"{LOGGER_CONVEYOR_COLOR}{LOGGER_BASE_NAME}.{LOGGER_CONVEYOR_NAME} - {self.c.id: <{LOGGER_NAME_PADDING}s} - {LOGGER_OUTPUT_EVENT_COLOR}{LOGGER_OUTPUT_GROUP_NAME} - ",
         )
-        consoleHandler = logging.StreamHandler()
-        consoleHandler.setFormatter(logFormatter)
-        self.logger.addHandler(consoleHandler)
-
+        
     def output(self) -> None:
         self.logger.debug("Output")
         if self.c.container is None:

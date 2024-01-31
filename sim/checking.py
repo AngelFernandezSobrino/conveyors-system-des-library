@@ -1,7 +1,6 @@
 from tkinter import Radiobutton
 from typing import TYPE_CHECKING, Set
 
-from sympy import E
 import sim
 
 import sim.settings as settings
