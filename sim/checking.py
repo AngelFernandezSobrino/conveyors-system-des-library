@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING, Set
 import sim
 
 import sim.settings as settings
-from sim.logger import logger
+
+import sim.custom_logging as logger
 
 import desim.core
 

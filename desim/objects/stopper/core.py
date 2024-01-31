@@ -7,7 +7,7 @@ from typing import (
     TYPE_CHECKING,
 )
 
-from desim.logger import (
+from desim.custom_logging import (
     LOGGER_BASE_NAME,
     LOGGER_STOPPER_COLOR,
     LOGGER_STOPPER_NAME,

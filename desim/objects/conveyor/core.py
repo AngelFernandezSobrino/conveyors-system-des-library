@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 from typing import TypedDict, TYPE_CHECKING
-from desim.logger import (
+from desim.custom_logging import (
     get_logger,
     LOGGER_BASE_NAME,
     LOGGER_CONVEYOR_NAME,

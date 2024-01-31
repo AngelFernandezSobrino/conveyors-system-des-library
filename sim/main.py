@@ -1,18 +1,10 @@
 from __future__ import annotations
 import argparse
-from statistics import mean
 import time
 import os
-from typing import Dict, Generic, List, TypeVar, Union
 from desim.events_manager import CustomEventListener
-from sim import results_controller
 from sim import item
-import sim
-from sim.item import ProductTypeReferences
 
-import sys
-
-from sim.logger import logger
 import logging
 
 import sim.checking as checking
@@ -41,12 +33,16 @@ parser.add_argument("-v", "--verbose", action="store_true")  # on/off flag
 
 args = parser.parse_args()
 
+logger = logging.getLogger("mains")
+logFormatter = logging.Formatter("\N{ESC}[0m{name: <30s} - {message}", style="{")
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+logger.addHandler(consoleHandler)
+
 if args.verbose:
     logging_level = logging.DEBUG
 else:
     logging_level = logging.INFO
-
-logging_level = logging.DEBUG
 
 logger.setLevel(logging_level)
 
@@ -83,8 +79,7 @@ def step_callback(core: desim.core.Simulation):
 
 ## Create simulation core
 
-sim_core = desim.core.Simulation(config_parser.config, debug=True)
-
+sim_core = desim.core.Simulation(config_parser.config, debug=args.verbose)
 
 behavior = custom_behaviour.SimulationController(sim_core)
 

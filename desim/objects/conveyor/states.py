@@ -5,7 +5,7 @@ import logging
 
 from typing import TYPE_CHECKING, Any
 from desim.events_manager import CustomEventListener
-from desim.logger import (
+from desim.custom_logging import (
     LOGGER_BASE_NAME,
     LOGGER_CONVEYOR_COLOR,
     LOGGER_CONVEYOR_NAME,

@@ -5,7 +5,9 @@ import sim.results_controller
 import sim.item
 import desim.objects.container
 
-from typing import TYPE_CHECKING, Dict, Literal, Set
+import sim.custom_logging as custom_logging
+
+from typing import TYPE_CHECKING, Dict, Literal
 
 if TYPE_CHECKING:
     import desim.objects.stopper
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
 
 import logging
 
-logger = logging.getLogger("mains.cont")
+logger = custom_logging.get_formated_logger("mains.cont", "{name: <24s} - {message}")
 
 from sim.item import Product, ProductTypeReferences
 

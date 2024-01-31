@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from desim.objects.stopper.states import States
 
-from desim.logger import (
+from desim.custom_logging import (
     LOGGER_BASE_NAME,
     LOGGER_INPUT_EVENT_COLOR,
     LOGGER_INPUT_GROUP_NAME,

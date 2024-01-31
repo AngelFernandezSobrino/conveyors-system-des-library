@@ -3,7 +3,6 @@ from typing import Callable, TYPE_CHECKING
 
 import time
 
-from py import log
 from desim.events_manager import EventsManager
 
 from desim.external_function import (
@@ -32,7 +31,6 @@ logFormatter = logging.Formatter("\N{ESC}[0m{name: <30s} - {message}", style="{"
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
 base_logger.addHandler(consoleHandler)
-base_logger.setLevel(logging.DEBUG)
 
 base_logger.debug("imported")
 
@@ -46,6 +44,13 @@ class Simulation:
         description: desim.objects.system.SystemDescription,
         debug: bool = False,
     ) -> None:
+        if debug:
+            logging_level = logging.DEBUG
+        else:
+            logging_level = logging.INFO
+
+        base_logger.setLevel(logging_level)
+
         self.timed_events_manager = TimedEventsManager()
 
         self.description = description

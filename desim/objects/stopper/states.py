@@ -4,10 +4,11 @@ from enum import Enum
 from typing import TYPE_CHECKING, Dict
 
 from attr import dataclass
+from torch import ne
 
-from desim.logger import get_logger  # type: ignore
 
-from desim.logger import (
+from desim.custom_logging import (
+    get_logger,
     LOGGER_BASE_NAME,
     LOGGER_NAME_PADDING,
     LOGGER_STATE_CHANGE_COLOR,

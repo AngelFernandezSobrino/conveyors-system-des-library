@@ -18,7 +18,7 @@ LOGGER_STATE_GROUP_NAME: str = "State "
 LOGGER_NAME_PADDING: int = 11
 
 
-def get_logger(name: str, formater_without_message: str) -> logging.Logger:
+def get_logger(name: str, formater_without_message: str):
     logger = logging.getLogger(name)
     logger.propagate = False
     logFormatter = logging.Formatter(

@@ -37,22 +37,19 @@ from statistics import mean
 import time
 import os
 from typing import List, Union
-from tests.sim.item import ProductTypeReferences
+from sim.item import ProductTypeReferences
 
-import sys
-
-from tests.sim.logger import logger
 import logging
 
-import tests.sim.checking as checking
-import tests.sim.mqtt as mqtt
-import tests.sim.settings as settings
-import tests.sim.graph as graph
-import tests.sim.data_storage as data_storage
+import sim.checking as checking
+import sim.mqtt as mqtt
+import sim.settings as settings
+import sim.graph as graph
+import sim.data_storage as data_storage
 
 import desim.core
-import desim.controllers.results_controller as results_controller
-import tests.sim.behavior as custom_behaviour
+import sim.results_controller as results_controller
+import sim.controller as custom_behaviour
 
 ## Config desym module logging level
 
