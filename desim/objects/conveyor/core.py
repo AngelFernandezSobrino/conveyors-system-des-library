@@ -1,6 +1,7 @@
 from __future__ import annotations
-import logging
-from typing import TypedDict, TYPE_CHECKING
+
+from typing import TYPE_CHECKING, TypedDict, Generic, TypeVar
+
 from desim.custom_logging import (
     get_logger,
     LOGGER_BASE_NAME,
@@ -20,6 +21,8 @@ if TYPE_CHECKING:
     import desim.objects.stopper
     import desim.core
 
+ContentType = TypeVar("ContentType")
+
 
 class ConveyorDescription(TypedDict):
     origin_id: desim.objects.stopper.StopperId
@@ -27,7 +30,7 @@ class ConveyorDescription(TypedDict):
     steps: int
 
 
-class Conveyor:
+class Conveyor(Generic[ContentType]):
     def __init__(
         self,
         id: desim.objects.conveyor.ConveyorId,
@@ -54,12 +57,12 @@ class Conveyor:
         self.destiny: desim.objects.stopper.core.Stopper
 
         # Container storage pointer
-        self.container: Container | None = None
+        self.container: Container[ContentType] | None = None
 
         # DEVS states and events
-        self.input_events: events.InputEvents = events.InputEvents(self)
-        self.output_events: events.OutputEvents = events.OutputEvents(self)
-        self.states: states.State = states.State(self)
+        self.i: events.InputEventsController = events.InputEventsController(self)
+        self.o: events.OutputEventsController = events.OutputEventsController(self)
+        self.s: states.StateController = states.StateController(self)
 
     def __str__(self) -> str:
         return f"Conveyor {self.id}"

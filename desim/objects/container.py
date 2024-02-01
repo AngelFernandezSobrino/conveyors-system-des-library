@@ -12,7 +12,7 @@ class Container(Generic[ContentType]):
         self.content = content
 
     def __str__(self) -> str:
-        return f"Tray {self.id}{f' with {self.content}' if self.content else ''}"
+        return f"Tray {self.id}{f' Content {self.content}' if self.content else ''}"
 
     def load(self, content: ContentType) -> bool:
         if self.content:

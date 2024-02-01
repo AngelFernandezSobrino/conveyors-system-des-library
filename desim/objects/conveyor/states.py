@@ -33,7 +33,7 @@ DestinyId = str
 
 
 @dataclass
-class States:
+class StateModel:
     class S(Enum):
         AVAILABLE = 1
         # NOT_AVAILABLE_BY_DESTINY = 2
@@ -48,7 +48,7 @@ class States:
         return f"{self.state.name}"
 
 
-class State:
+class StateController:
     def __init__(self, core: core.Conveyor) -> None:
         self.c = core
         self.logger = get_logger(
@@ -56,10 +56,10 @@ class State:
             f"{LOGGER_CONVEYOR_COLOR}{LOGGER_BASE_NAME}.{LOGGER_CONVEYOR_NAME} - {self.c.id: <{LOGGER_NAME_PADDING}s} - {LOGGER_STATE_CHANGE_COLOR}{LOGGER_STATE_GROUP_NAME} - ",
         )
 
-        self.state: States = States(States.S.AVAILABLE)
+        self.state: StateModel = StateModel(StateModel.S.AVAILABLE)
         self.state_change_id = 0
 
-    def go_state(self, context: Any, state: States) -> None:
+    def go_state(self, context: Any, state: StateModel) -> None:
         if self.c.debug:
             self.logger.debug(f"From {self.state} -> To {state}")
         if state == self.state:
@@ -71,20 +71,22 @@ class State:
         prev_state = self.state
         self.state = state
 
-        self.c.output_events.end_state(prev_state)
+        self.c.o.end_state(prev_state)
 
         if self.state_change_id != last_state_change_id + 1:
             return
 
         match self.state:
-            case States(States.S.MOVING):
+            case StateModel(StateModel.S.MOVING):
                 self.c.events_manager.push(
                     CustomEventListener(
-                        self.c.states.go_state, (States(States.S.NOT_AVAILABLE),), {}
+                        self.c.s.go_state,
+                        (StateModel(StateModel.S.NOT_AVAILABLE),),
+                        {},
                     ),
                     self.c.steps,
                 )
                 return
-            case States(States.S.NOT_AVAILABLE_BY_MOVING):
-                self.go_state(None, state=States(States.S.WAITING_RECEIVE))
+            case StateModel(StateModel.S.NOT_AVAILABLE_BY_MOVING):
+                self.go_state(None, state=StateModel(StateModel.S.WAITING_RECEIVE))
                 return

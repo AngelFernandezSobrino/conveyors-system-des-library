@@ -80,9 +80,9 @@ class Stopper(Generic[ContentType]):
         self.container: Container[ContentType] | None = None
 
         # Stopper composition objects
-        self.input_events: events.InputEvents = events.InputEvents(self)
-        self.output_events: events.OutputEvents = events.OutputEvents(self)
-        self.states: states.StateController = states.StateController(self)
+        self.i: events.InputEventsController = events.InputEventsController(self)
+        self.o: events.OutputEventsController = events.OutputEventsController(self)
+        self.s: states.StateController = states.StateController(self)
 
     def __str__(self) -> str:
         return f"Stopper {self.id}"

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar, Generic
 
 import time
 
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     import desim.objects.system
     import desim.objects.stopper
     import desim.objects.conveyor
+    from typing import Callable
 
 
 import logging
@@ -37,8 +38,10 @@ base_logger.debug("imported")
 logger = logging.getLogger("desim.core")
 logger.debug("imported")
 
+ContentType = TypeVar("ContentType")
 
-class Simulation:
+
+class Simulation(Generic[ContentType]):
     def __init__(
         self,
         description: desim.objects.system.SystemDescription,
@@ -61,9 +64,11 @@ class Simulation:
 
         # Build simulation graph
 
-        self.stoppers: dict[desim.objects.stopper.StopperId, Stopper] = {}
+        self.stoppers: dict[desim.objects.stopper.StopperId, Stopper[ContentType]] = {}
 
-        self.conveyors: dict[desim.objects.conveyor.ConveyorId, Conveyor] = {}
+        self.conveyors: dict[
+            desim.objects.conveyor.ConveyorId, Conveyor[ContentType]
+        ] = {}
 
         for stopper_id, stopper_description in self.description.items():
             self.stoppers[stopper_id] = Stopper(
@@ -113,7 +118,7 @@ class Simulation:
     def register_external_events(
         self,
         system_external_events: dict[Step, list[CustomEventListener]],
-        callback_after_step_event: Callable[[Simulation], None] | None,
+        callback_after_step_event: Callable[[Simulation], None] | None = None,
     ):
         self.system_external_events = system_external_events
         self.callback_after_step_event = callback_after_step_event
