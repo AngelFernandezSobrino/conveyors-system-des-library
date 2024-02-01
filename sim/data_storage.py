@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Dict, List, TypedDict, Union
 
 import csv
 
 # Get the actual date and time string for the file name
 from datetime import datetime
+from desim.objects import stopper
+from sim import settings
 
 
 from sim.item import ProductTypeReferences
@@ -17,51 +19,43 @@ if TYPE_CHECKING:
 
 import sim.results_controller
 
-step_to_time = 0.1
-data_dict: dict = {"results/busyness": []}
 
-for index in ProductTypeReferences:
-    data_dict[f"results/production/{index.name}"] = []
+results: Dict[str, Dict] = {}
 
-for key in ["DIR04", "PT05", "PT06"]:
-    data_dict[f"results/times/{key}"] = []
+for product_type in ProductTypeReferences:
+    results[f"production.{product_type.name}"] = {0: 0}
+
+results["stoppers_occupied"] = {0: 0}
+
+results["conveyors_moving"] = {0: 0}
 
 
-def data_storage_update(
+def save_actual_results(
     context=None, controller: sim.controller.SimulationController | None = None
 ) -> None:
     if controller is None:
         return
-    for index in ProductTypeReferences:
-        data_dict[f"results/production/{index.name}"].append(
-            (
-                controller.simulation.timed_events_manager.step,
-                controller.results_production.counters[index],
-            )
-        )
 
-    for key in ["DIR04", "PT05", "PT06"]:
-        data_dict[f"results/times/{key}"].append(
-            (
-                controller.simulation.timed_events_manager.step,
-                controller.results_time.stoppersResults[key],
-            )
-        )
+    for product_type in ProductTypeReferences:
+        results[f"production.{product_type.name}"][
+            controller.simulation.timed_events_manager.step
+        ] = controller.results_production.get(product_type)
 
-    data_dict["results/busyness"].append(
-        (
-            controller.simulation.timed_events_manager.step,
-            sim.results_controller.calculate_busyness(controller.simulation),
-        )
+    results["stoppers_occupied"][controller.simulation.timed_events_manager.step] = (
+        sim.results_controller.calculate_ratio_occupied_stoppers(controller.simulation)
+    )
+
+    results["conveyors_moving"][controller.simulation.timed_events_manager.step] = (
+        sim.results_controller.calculate_ratio_moving_conveyors(controller.simulation)
     )
 
 
-def save_data_to_file(settings):
+def save_data_to_file():
 
     now = datetime.now()
 
     # dd/mm/YY H:M:S
-    dt_string: str = now.strftime("%d-%m-%Y_%H-%M-%S")
+    dt_string: str = now.strftime("%Y-%m-%d_%H-%M-%S")
 
     print("-----------------------------------")
     print("Saving data to file\n")
@@ -86,49 +80,19 @@ def save_data_to_file(settings):
     print("Saving data to file...")
 
     with open(f"data/simulations/results/{dt_string}.csv", "w") as f:
-        busyness_step = 0
-        production_step = {}
-        for index in ProductTypeReferences:
-            production_step[f"results/production/{index.name}"] = 0
 
         writer = csv.writer(f)
-        writer.writerow(
-            ["step", "busyness", "production_1", "production_2", "production_3"]
-        )
 
-        for step in range(-1, settings.steps):
-            new_row: List[Union[float, None]] = [step]
-            write_row = False
-            if (
-                len(data_dict["results/busyness"]) > busyness_step
-                and data_dict["results/busyness"][busyness_step][0] == step
-            ):
-                # logger.info(f"step: {step}, busyness: {data_storage.data_dict['results/busyness'][busyness_step][1]}")
-                new_row.append(data_dict["results/busyness"][busyness_step][1])
-                busyness_step += 1
-                write_row = True
-            else:
-                new_row.append(None)
+        header_row: List[str] = ["step"] + [
+            column_name for column_name in results.keys()
+        ]
 
-            for index in ProductTypeReferences:
-                if (
-                    len(data_dict[f"results/production/{index.name}"])
-                    > production_step[f"results/production/{index.name}"]
-                    and data_dict[f"results/production/{index.name}"][
-                        production_step[f"results/production/{index.name}"]
-                    ][0]
-                    == step
-                ):
-                    new_row.append(
-                        data_dict[f"results/production/{index.name}"][
-                            production_step[f"results/production/{index.name}"]
-                        ][1]
-                    )
-                    # logger.info(f"step: {step}, production_1: "+ str(data_storage.data_dict[f"results/production/{index.name}"][production_step[f"results/production/{index.name}"]][1]))
+        writer.writerow(header_row)
 
-                    production_step[f"results/production/{index.name}"] += 1
-                    write_row = True
-                else:
-                    new_row.append(None)
-            if write_row:
-                writer.writerow(new_row)
+        for step in results["production.product_1"].keys():
+            row: List[Union[int, float]] = [step]
+
+            for column in results.values():
+                row.append(column[step])
+
+            writer.writerow(row)
