@@ -142,7 +142,7 @@ results_production.simulation_start(
 )
 results_time.simulation_start(sim_core.stoppers, sim_core.timed_events_manager.step)
 
-sim_core.sim_run_steps(settings.steps)
+sim_core.sim_run_steps(settings.STEPS)
 
 results_production.simulation_end(sim_core.stoppers, sim_core.timed_events_manager.step)
 results_time.simulation_end(sim_core.stoppers, sim_core.timed_events_manager.step)
