@@ -1,10 +1,9 @@
+from __future__ import annotations
 from typing import TYPE_CHECKING, TypedDict
 
-from desim.objects.stopper import StopperId
-from desim.objects.stopper.core import Stopper
-from desim.core import Simulation
 
 if TYPE_CHECKING:
+    from desim.objects.stopper import StopperId, Stopper, StopperStateModel
     from desim.core import Simulation
 
 
@@ -33,18 +32,11 @@ class Cycle:
     def population(cycle):
         population = 0
         for i in range(len(cycle.stoppers)):
-            if cycle.core.stoppers[cycle.stoppers[i].id].input_container:
+            if (
+                cycle.core.stoppers[cycle.stoppers[i].id].s.state.node
+                != StopperStateModel.Node.REST
+            ):
                 population += 1
-            if (i + 1) < len(cycle.stoppers):
-                if cycle.core.stoppers[cycle.stoppers[i].id].output_trays[
-                    cycle.stoppers[i + 1].id
-                ]:
-                    population += 1
-            else:
-                if cycle.core.stoppers[cycle.stoppers[i].id].output_trays[
-                    cycle.stoppers[0].id
-                ]:
-                    population += 1
 
         return population
 
@@ -59,19 +51,19 @@ class Cycle:
                         {"stopper": system_stopper, "destiny_id": stopper.id}
                     )
 
-    def lock_cycle_stoppers(self):
-        self.locker = True
-        for foreign_stopper in self.foreign_input_stoppers:
-            foreign_stopper["stopper"].input_events.graph_lock(
-                [foreign_stopper["destiny_id"]]
-            )
+    # def lock_cycle_stoppers(self):
+    #     self.locker = True
+    #     for foreign_stopper in self.foreign_input_stoppers:
+    #         foreign_stopper["stopper"].input_events.graph_lock(
+    #             [foreign_stopper["destiny_id"]]
+    #         )
 
-    def unlock_cycle_stoppers(self):
-        self.locked = False
-        for foreign_stopper in self.foreign_input_stoppers:
-            foreign_stopper["stopper"].input_events.graph_unlock(
-                [foreign_stopper["destiny_id"]]
-            )
+    # def unlock_cycle_stoppers(self):
+    #     self.locked = False
+    #     for foreign_stopper in self.foreign_input_stoppers:
+    #         foreign_stopper["stopper"].input_events.graph_unlock(
+    #             [foreign_stopper["destiny_id"]]
+    #         )
 
 
 class GraphAnalizer:
@@ -118,7 +110,7 @@ class GraphAnalizer:
         self.visited[stopper.id] = True
         self.path.append(stopper)
 
-        for output_stopper in stopper.output_conveyors:
+        for output_stopper in stopper.output_conveyors.values():
             if output_stopper in self.path:
                 cycle_start = self.path.index(output_stopper)
                 self.cycles.append(Cycle(self.path[cycle_start:], self.core))
