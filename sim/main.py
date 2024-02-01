@@ -2,6 +2,8 @@ from __future__ import annotations
 import argparse
 import time
 import os
+
+from sympy import Product
 from desim.events_manager import CustomEventListener
 from sim import item
 
@@ -79,7 +81,7 @@ def step_callback(core: desim.core.Simulation):
 
 ## Create simulation core
 
-sim_core = desim.core.Simulation(config_parser.config, debug=args.verbose)
+sim_core = desim.core.Simulation[Product](config_parser.config, debug=args.verbose)
 
 behavior = custom_behaviour.SimulationController(sim_core)
 
@@ -88,10 +90,10 @@ sim_core.register_external_events(
     step_callback,
 )
 
-for data_storage_step in range(0, settings.steps, 100):
+for data_storage_step in range(0, settings.STEPS, 100):
     sim_core.timed_events_manager.add(
         CustomEventListener(
-            data_storage.data_storage_update, (), {"controller": behavior}
+            data_storage.save_actual_results, (), {"controller": behavior}
         ),
         data_storage_step,
     )
@@ -104,7 +106,7 @@ for data_storage_step in range(0, settings.steps, 100):
 
 start = time.time()
 
-sim_core.sim_run_steps(settings.steps)
+sim_core.sim_run_steps(settings.STEPS)
 
 behavior.results_time.update_all_times()
 
@@ -112,7 +114,7 @@ behavior.results_time.update_all_times()
 ## Print simulation results
 
 logger.info(f"Simulation spent time: {time.time() - start}")
-logger.info(f"Simulation duration: {settings.steps*settings.step_to_time / 3600} hours")
+logger.info(f"Simulation duration: {settings.STEPS*settings.STEP_TO_TIME / 3600} hours")
 logger.info("Production results:")
 logger.info(
     f"Product {item.ProductTypeReferences.product_1.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_1]}"
@@ -124,4 +126,4 @@ logger.info(
     f"Product {item.ProductTypeReferences.product_3.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_3]}"
 )
 
-data_storage.save_data_to_file(settings)
+data_storage.save_data_to_file()

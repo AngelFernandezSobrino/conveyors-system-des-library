@@ -4,11 +4,11 @@ import wandb
 
 from typing import TYPE_CHECKING, TypeVar
 
-from tests.sim.item import ProductTypeReferences
+from sim.item import ProductTypeReferences
 
 if TYPE_CHECKING:
     import desim.core
-    import desim.controllers.results_controller
+    import sim.results_controller
     from desim.core import Simulation
 
 step_to_time = 0.1

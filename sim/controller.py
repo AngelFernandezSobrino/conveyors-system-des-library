@@ -9,6 +9,8 @@ import sim.custom_logging as custom_logging
 
 from typing import TYPE_CHECKING, Dict, Literal
 
+from sim.settings import MAX_CONTAINERS_AMMOUNT
+
 if TYPE_CHECKING:
     import desim.objects.stopper
     import desim.core
@@ -40,7 +42,7 @@ class SimulationController:
     def __init__(self, simulation: desim.core.Simulation):
         self.simulation = simulation
 
-        self.results_production = sim.results_controller.CounterController(
+        self.results_production = sim.results_controller.CountersController(
             sim.item.ProductTypeReferences
         )
 
@@ -162,13 +164,13 @@ class SimulationController:
 
         for destiny_stopper_id in stopper.output_conveyors.keys():
             if (
-                stopper.states.state.control[destiny_stopper_id]
-                != desim.objects.stopper.states.States.Control.LOCKED
+                stopper.s.state.control[destiny_stopper_id]
+                != desim.objects.stopper.states.StateModel.Control.LOCKED
             ):
-                stopper.input_events.control_lock_by_destiny_id(destiny_stopper_id)
+                stopper.i.control_lock_by_destiny_id(destiny_stopper_id)
                 stopper.timed_events_manager.push(
                     tem.CustomEventListener(
-                        callable=stopper.input_events.control_unlock_by_destiny_id,
+                        callable=stopper.i.control_unlock_by_destiny_id,
                         args=(destiny_stopper_id,),
                     ),
                     time,
@@ -176,21 +178,21 @@ class SimulationController:
 
     def external_container_input(self, context):
         if (
-            self.simulation.stoppers["PT01"].states.state.node
-            != desim.objects.stopper.states.States.Node.REST
+            self.simulation.stoppers["PT01"].s.state.node
+            != desim.objects.stopper.states.StateModel.Node.REST
         ):
             return
 
         global tray_index
-        if tray_index < 10:
+        if len(self.simulation.containers) < MAX_CONTAINERS_AMMOUNT:
             new_tray = desim.objects.container.Container[Product](str(tray_index), None)
             tray_index += 1
             logger.debug(f"External container {new_tray} created")
             self.simulation.containers.append(new_tray)
             logger.debug(f"Reserve PT01 with {new_tray}")
-            self.simulation.stoppers["PT01"].input_events.reserve()
+            self.simulation.stoppers["PT01"].i.reserve()
             logger.debug(f"Send to PT01 with {new_tray}")
-            self.simulation.stoppers["PT01"].input_events.receive(new_tray)
+            self.simulation.stoppers["PT01"].i.receive(new_tray)
 
     def empty_tray(self, stopper: Stopper[Product]):
         container = self.get_valid_occupied_container(stopper)
@@ -293,17 +295,17 @@ class SimulationController:
         if container is None:
             return
 
-        logger.debug(f"Bifurcation PT05: {stopper.states.state}")
+        logger.debug(f"Bifurcation PT05: {stopper.s.state}")
 
         if self.get_container_content_filter(container) is not None:
             logger.debug(f"Bifurcation PT05: Moving {stopper.container} to DIR08")
-            stopper.input_events.control_lock_by_destiny_id("DIR05")
-            stopper.input_events.control_unlock_by_destiny_id(None, "DIR08")
+            stopper.i.control_lock_by_destiny_id("DIR05")
+            stopper.i.control_unlock_by_destiny_id(None, "DIR08")
             return
 
         logger.debug(f"Bifurcation PT05: Moving {stopper.container} to DIR05")
-        stopper.input_events.control_unlock_by_destiny_id(None, "DIR05")
-        stopper.input_events.control_lock_by_destiny_id("DIR08")
+        stopper.i.control_unlock_by_destiny_id(None, "DIR05")
+        stopper.i.control_lock_by_destiny_id("DIR08")
 
     def bifurcation_pt09(self, stopper: Stopper[Product]):
         container = self.get_valid_occupied_container(stopper)
@@ -316,13 +318,13 @@ class SimulationController:
             is not None
         ):
             logger.debug(f"Bifurcation PT09: Moving {stopper.container} to DIR14")
-            stopper.input_events.control_unlock_by_destiny_id(None, "DIR14")
-            stopper.input_events.control_lock_by_destiny_id("DIR11")
+            stopper.i.control_unlock_by_destiny_id(None, "DIR14")
+            stopper.i.control_lock_by_destiny_id("DIR11")
             return
 
         logger.debug(f"Bifurcation PT09: Moving {stopper.container} to DIR11")
-        stopper.input_events.control_unlock_by_destiny_id(None, "DIR11")
-        stopper.input_events.control_lock_by_destiny_id("DIR14")
+        stopper.i.control_unlock_by_destiny_id(None, "DIR11")
+        stopper.i.control_lock_by_destiny_id("DIR14")
 
     def bifurcation_pt10(self, stopper: Stopper[Product]):
         container = self.get_valid_occupied_container(stopper)
@@ -335,13 +337,13 @@ class SimulationController:
             is not None
         ):
             logger.debug(f"Bifurcation PT10: Moving {stopper.container} to DIR15")
-            stopper.input_events.control_lock_by_destiny_id("DIR13")
-            stopper.input_events.control_unlock_by_destiny_id(None, "DIR15")
+            stopper.i.control_lock_by_destiny_id("DIR13")
+            stopper.i.control_unlock_by_destiny_id(None, "DIR15")
             return
 
         logger.debug(f"Bifurcation PT10: Moving {stopper.container} to DIR13")
-        stopper.input_events.control_lock_by_destiny_id("DIR15")
-        stopper.input_events.control_unlock_by_destiny_id(None, "DIR13")
+        stopper.i.control_lock_by_destiny_id("DIR15")
+        stopper.i.control_unlock_by_destiny_id(None, "DIR13")
 
     def bifurcation_pt16(self, stopper: Stopper[Product]):
         container = self.get_valid_occupied_container(stopper)
@@ -350,13 +352,13 @@ class SimulationController:
 
         if self.get_container_content_filter(container, state="1") is not None:
             logger.debug(f"Bifurcation PT16: Moving {stopper.container} to DIR07")
-            stopper.input_events.control_lock_by_destiny_id("PT17")
-            stopper.input_events.control_unlock_by_destiny_id(None, "DIR07")
+            stopper.i.control_lock_by_destiny_id("PT17")
+            stopper.i.control_unlock_by_destiny_id(None, "DIR07")
             return
 
         logger.debug(f"Bifurcation PT16: Moving {stopper.container} to PT17")
-        stopper.input_events.control_lock_by_destiny_id("DIR07")
-        stopper.input_events.control_unlock_by_destiny_id(None, "PT17")
+        stopper.i.control_lock_by_destiny_id("DIR07")
+        stopper.i.control_unlock_by_destiny_id(None, "PT17")
 
     def get_container_content_filter(
         self,
@@ -388,8 +390,8 @@ class SimulationController:
 
     def check_stopper_ocuppied(self, stopper: Stopper[Product]):
         if (
-            stopper.states.state.node
-            != desim.objects.stopper.states.States.Node.OCCUPIED
+            stopper.s.state.node
+            != desim.objects.stopper.states.StateModel.Node.OCCUPIED
         ):
             return False
 
