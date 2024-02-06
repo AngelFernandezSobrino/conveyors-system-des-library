@@ -15,6 +15,16 @@ if TYPE_CHECKING:
 import desim.objects.stopper.states
 import desim.objects.conveyor.states
 
+import logging
+
+logger = logging.getLogger("mains.results_controller")
+logger.propagate = False
+logFormatter = logging.Formatter("\N{ESC}[0m{name: <30s} - {message}", style="{")
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+logger.addHandler(consoleHandler)
+logger.setLevel(logging.INFO)
+
 
 class StopperCounter(desim.objects.stopper.states.StateModel):
     def __init__(self, actual_state: desim.objects.stopper.states.StateModel):
@@ -192,28 +202,46 @@ class CronoController:
             self.update_stopper_times(stopper)
 
 
-def calculate_ratio_occupied_stoppers(simulation: Simulation):
+def calculate_ratio_non_rest_stoppers(simulation: Simulation):
     stoppers_in_rest = 0
-
+    logger.debug("Calculating ratio non rest stoppers")
     for stopper in simulation.stoppers.values():
-        if (
-            stopper.s.state.node
-            == desim.objects.stopper.states.StateModel.Node.OCCUPIED
-        ):
+
+        logger.debug(
+            f"Stopper name: {stopper.id} - Stopper state: {stopper.s.state.node}"
+        )
+
+        if stopper.s.state.node == desim.objects.stopper.states.StateModel.Node.REST:
+            logger.debug(f"Stopper {stopper.id} is in rest")
             stoppers_in_rest += 1
 
-    return stoppers_in_rest / len(simulation.stoppers)
+    logger.debug(
+        f"Stoppers in rest: {stoppers_in_rest} - Total stoppers: {len(simulation.stoppers)}"
+    )
+    logger.debug(f"Result: {1 - stoppers_in_rest / len(simulation.stoppers)}")
+    return 1 - stoppers_in_rest / len(simulation.stoppers)
 
 
 def calculate_ratio_moving_conveyors(simulation: Simulation):
     conveyors_in_movement = 0
 
+    logger.debug("Calculating ratio moving conveyors")
+    logger.debug(f"Conveyors: {simulation.conveyors}")
     for conveyor in simulation.conveyors.values():
+        logger.debug(
+            f"Conveyor name: {conveyor.id} - Conveyor state: {conveyor.s.state.state}"
+        )
         if (
             conveyor.s.state.state == desim.objects.conveyor.states.StateModel.S.MOVING
             or conveyor.s.state.state
             == desim.objects.conveyor.states.StateModel.S.NOT_AVAILABLE_BY_MOVING
         ):
+            logger.debug(f"Conveyor {conveyor.id} is in movement")
             conveyors_in_movement += 1
+
+    logger.debug(
+        f"Conveyors in movement: {conveyors_in_movement} - Total conveyors: {len(simulation.conveyors)}"
+    )
+    logger.debug(f"Result: {conveyors_in_movement / len(simulation.conveyors)}")
 
     return conveyors_in_movement / len(simulation.conveyors)
