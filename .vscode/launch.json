@@ -6,15 +6,23 @@
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true
         },
         {
-            "name": "Sim Baseline",
-            "type": "python",
+            "name": "Sim",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "sim/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Sim Verbose",
+            "type": "debugpy",
             "request": "launch",
             "program": "sim/main.py",
             "args": ["--verbose"],
