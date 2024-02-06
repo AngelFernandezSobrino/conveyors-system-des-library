@@ -22,60 +22,56 @@ class InputEventsController:
 
     def reserve(self) -> None:
         self.logger.debug("Reserved by origin")
-        match self.c.s.state:
-            case StateModel(StateModel.S.AVAILABLE):
-                self.c.s.go_state(
-                    None, StateModel(StateModel.S.NOT_AVAILABLE_BY_MOVING)
-                )
-            case StateModel(
-                StateModel.S.NOT_AVAILABLE_BY_MOVING
-                | StateModel.S.WAITING_RECEIVE
-                | StateModel.S.MOVING
-                | StateModel.S.NOT_AVAILABLE
-            ):
-                raise Exception(
-                    f"Fatal error: Actual state is {self.c.s.state}, reserve event is not allowed"
-                )
+        if self.c.s.state.state != StateModel.S.AVAILABLE:
+            raise Exception(
+                f"Fatal error: Actual state is {self.c.s.state}, reserve event is not allowed"
+            )
+
+        self.c.s.go_state(None, StateModel(StateModel.S.NOT_AVAILABLE_BY_MOVING))
 
     def receive(self, container: desim.objects.container.Container) -> None:
         self.logger.debug(f"Receive {container}")
-        match self.c.s.state:
-            case StateModel(StateModel.S.WAITING_RECEIVE):
-                self.c.container = container
-                self.c.s.go_state(None, StateModel(StateModel.S.MOVING))
-            case StateModel(
-                StateModel.S.AVAILABLE
-                | StateModel.S.MOVING
-                | StateModel.S.NOT_AVAILABLE_BY_MOVING
-                | StateModel.S.NOT_AVAILABLE
-            ):
-                raise Exception(
-                    f"Fatal error: Actual state is {self.c.s.state}, receive event is not allowed"
-                )
+        if self.c.s.state.state != StateModel.S.WAITING_RECEIVE:
+            raise Exception(
+                f"Fatal error: Actual state is {self.c.s.state}, receive event is not allowed"
+            )
+
+        self.c.container = container
+        self.c.s.go_state(None, StateModel(StateModel.S.MOVING))
 
     def destiny_available(self) -> None:
         self.logger.debug("Destiny is available")
-        match self.c.s.state:
-            case StateModel(StateModel.S.NOT_AVAILABLE):
-                self.c.s.go_state(None, StateModel(StateModel.S.AVAILABLE))
-            case StateModel(
-                StateModel.S.NOT_AVAILABLE_BY_MOVING
-                | StateModel.S.MOVING
-                | StateModel.S.WAITING_RECEIVE
-            ):
-                raise Exception(
-                    f"Fatal error: Actual state is {self.c.s.state}, destiny_available event is not allowed"
-                )
+        if (
+            self.c.s.state.state != StateModel.S.NOT_AVAILABLE
+            and self.c.s.state.state != StateModel.S.AVAILABLE
+        ):
+            raise Exception(
+                f"Fatal error: Actual state is {self.c.s.state}, destiny_available event is not allowed"
+            )
+
+        if self.c.s.state.state == StateModel.S.AVAILABLE:
+            return
+
+        self.c.s.go_state(None, StateModel(StateModel.S.AVAILABLE))
 
     def destiny_not_available(self) -> None:
         self.logger.debug("Destiny isn't available")
-        match self.c.s.state:
-            case StateModel(StateModel.S.AVAILABLE):
-                self.c.s.go_state(None, StateModel(StateModel.S.NOT_AVAILABLE))
-            case StateModel(StateModel.S.MOVING):
-                raise Exception(
-                    f"Fatal error: Actual state is {self.c.s.state}, destiny_not_available event is not allowed"
-                )
+        if (
+            self.c.s.state.state != StateModel.S.AVAILABLE
+            and self.c.s.state.state != StateModel.S.WAITING_RECEIVE
+            and self.c.s.state.state != StateModel.S.NOT_AVAILABLE
+        ):
+            raise Exception(
+                f"Fatal error: Actual state is {self.c.s.state}, destiny_not_available event is not allowed"
+            )
+
+        if (
+            self.c.s.state.state == StateModel.S.WAITING_RECEIVE
+            or self.c.s.state.state == StateModel.S.NOT_AVAILABLE
+        ):
+            return
+
+        self.c.s.go_state(None, StateModel(StateModel.S.NOT_AVAILABLE))
 
 
 # Output events class, used by the stopper to send events to other stoppers
@@ -110,6 +106,7 @@ class OutputEventsController:
     def end_state(self, state: StateModel) -> None:
         match state:
             case StateModel(StateModel.S.AVAILABLE):
+                pass
                 self.not_available()
             case StateModel(StateModel.S.NOT_AVAILABLE_BY_MOVING):
                 self.reserve()

@@ -39,43 +39,30 @@ class InputEventsController:
     def reserve(self) -> None:
         self.logger.debug("Reserved by input conveyor")
         actual_state = copy.deepcopy(self.c.s.state)
-        match self.c.s.state:
-            case StateModel(node=StateModel.Node.REST):
-                if self.c.container is not None:
-                    raise Exception(
-                        f"Fatal error: Tray is not None, WTF {self.c.container}"
-                    )
-                actual_state.node = StateModel.Node.RESERVED
-                self.c.s.go_state(actual_state)
-            case (
-                StateModel(node=StateModel.Node.RESERVED)
-                | StateModel(node=StateModel.Node.OCCUPIED)
-                | StateModel(node=StateModel.Node.SENDING)
-            ):
-                raise Exception(
-                    f"Fatal error: Actual state is {self.c.s.state}, reserve event is not allowed"
-                )
+        if self.c.s.state.node != StateModel.Node.REST:
+            raise Exception(
+                f"Fatal error: Actual state is {self.c.s.state}, reserve event is not allowed"
+            )
+
+        if self.c.container is not None:
+            raise Exception(f"Fatal error: Tray is not None, WTF {self.c.container}")
+
+        actual_state.node = StateModel.Node.RESERVED
+        self.c.s.go_state(actual_state)
 
     def receive(self, container: Container) -> None:
         self.logger.debug(f"Receive container {container}")
         actual_state = copy.deepcopy(self.c.s.state)
-        match self.c.s.state:
-            case StateModel(StateModel.Node.RESERVED):
-                if self.c.container is not None:
-                    raise Exception(
-                        f"Fatal error: Tray is not None, WTF {self.c.container}"
-                    )
-                actual_state.node = StateModel.Node.OCCUPIED
-                self.c.container = container
-                self.c.s.go_state(actual_state)
-            case (
-                StateModel(node=StateModel.Node.REST)
-                | StateModel(node=StateModel.Node.OCCUPIED)
-                | StateModel(node=StateModel.Node.SENDING)
-            ):
-                raise Exception(
-                    f"Fatal error: Actual state is {self.c.s.state}, input event is not allowed"
-                )
+        if self.c.s.state.node != StateModel.Node.RESERVED:
+            raise Exception(
+                f"Fatal error: Actual state is {self.c.s.state}, receive event is not allowed"
+            )
+        if self.c.container is not None:
+            raise Exception("Fatal error: Tray is None, WTF")
+
+        actual_state.node = StateModel.Node.OCCUPIED
+        self.c.container = container
+        self.c.s.go_state(actual_state)
 
     def destiny_available(
         self, destiny_conveyor_id: desim.objects.conveyor.ConveyorId
@@ -106,6 +93,7 @@ class InputEventsController:
 
         if self.c.s.state.control[destiny_id_to_lock] == StateModel.Control.LOCKED:
             return
+
         actual_state = copy.deepcopy(self.c.s.state)
         actual_state.control[destiny_id_to_lock] = StateModel.Control.LOCKED
         self.c.s.go_state(actual_state, False)
@@ -117,6 +105,7 @@ class InputEventsController:
 
         if self.c.s.state.control[destiny_id_to_lock] == StateModel.Control.UNLOCKED:
             return
+
         actual_state = copy.deepcopy(self.c.s.state)
         actual_state.control[destiny_id_to_lock] = StateModel.Control.UNLOCKED
         self.c.s.go_state(actual_state)
@@ -176,7 +165,8 @@ class OutputEventsController:
     def available(self):
         self.logger.debug("I'm available")
         for conveyor in self.c.input_conveyors.values():
-            conveyor.i.destiny_available()
+            if self.c.s.state.node == StateModel.Node.REST:
+                conveyor.i.destiny_available()
 
     def not_available(self):
         self.logger.debug("I'm not available")
