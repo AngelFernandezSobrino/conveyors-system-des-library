@@ -9,8 +9,6 @@ import sim.custom_logging as custom_logging
 
 from typing import TYPE_CHECKING, Dict, Literal
 
-from sim.settings import MAX_CONTAINERS_AMMOUNT
-
 if TYPE_CHECKING:
     import desim.objects.stopper
     import desim.core
@@ -39,8 +37,9 @@ class SimulationController:
     def production_event_listener(self, context: sim.item.Product):
         self.results_production.increment(context.item_type)  # type: ignore
 
-    def __init__(self, simulation: desim.core.Simulation):
+    def __init__(self, simulation: desim.core.Simulation, max_containers_ammount: int):
         self.simulation = simulation
+        self.max_containers_ammount = max_containers_ammount
 
         self.results_production = sim.results_controller.CountersController(
             sim.item.ProductTypeReferences
@@ -184,7 +183,7 @@ class SimulationController:
             return
 
         global tray_index
-        if len(self.simulation.containers) < MAX_CONTAINERS_AMMOUNT:
+        if len(self.simulation.containers) < self.max_containers_ammount:
             new_tray = desim.objects.container.Container[Product](str(tray_index), None)
             tray_index += 1
             logger.debug(f"External container {new_tray} created")

@@ -9,7 +9,7 @@ from sim import item
 
 import logging
 
-import sim.checking as checking
+# import sim.checking as checking
 
 # import sim.mqtt as mqtt
 import sim.settings as settings
@@ -68,22 +68,24 @@ wandb_enabled = False
 ## Step callback function for each simulation step
 
 
-def step_callback(core: desim.core.Simulation):
-    checking.time_one = time.time()
-    # wandb_wrapper.step_callback(core, wandb_enabled)
+# def step_callback(core: desim.core.Simulation):
+#     checking.time_one = time.time()
+#     # wandb_wrapper.step_callback(core, wandb_enabled)
 
-    # checking.check_simulation_errors(core)
-    # checking.print_simulation_data(core)
-    # mqtt.send_data_to_mqtt(core)
-    checking.time_two = time.time()
-    # time.sleep(0.02)
+#     # checking.check_simulation_errors(core)
+#     # checking.print_simulation_data(core)
+#     # mqtt.send_data_to_mqtt(core)
+#     checking.time_two = time.time()
+#     # time.sleep(0.02)
 
 
 ## Create simulation core
 
 sim_core = desim.core.Simulation[Product](config_parser.config, debug=args.verbose)
 
-behavior = custom_behaviour.SimulationController(sim_core)
+behavior = custom_behaviour.SimulationController(
+    sim_core, settings.MAX_CONTAINERS_AMMOUNT
+)
 
 sim_core.register_external_events(
     behavior.external_functions,
@@ -126,4 +128,4 @@ logger.info(
     f"Product {item.ProductTypeReferences.product_3.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_3]}"
 )
 
-data_storage.save_data_to_file()
+data_storage.save_data_to_file(False, "profiling")
