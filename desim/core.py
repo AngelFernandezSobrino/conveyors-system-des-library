@@ -84,7 +84,7 @@ class Simulation(Generic[ContentType]):
                 stopper_description["destiny"]
             ):
                 if f"{stopper_id}_{destiny_stopper_id}" not in self.conveyors:
-                    self.conveyors["{stopper_id}_{destiny_stopper_id}"] = Conveyor(
+                    self.conveyors[f"{stopper_id}_{destiny_stopper_id}"] = Conveyor(
                         f"{stopper_id}_{destiny_stopper_id}",
                         ConveyorDescription(
                             origin_id=stopper_id,
@@ -95,21 +95,21 @@ class Simulation(Generic[ContentType]):
                         debug=debug,
                     )
 
-                    self.conveyors["{stopper_id}_{destiny_stopper_id}"].set_origin(
+                    self.conveyors[f"{stopper_id}_{destiny_stopper_id}"].set_origin(
                         self.stoppers[stopper_id]
                     )
 
-                    self.conveyors["{stopper_id}_{destiny_stopper_id}"].set_destiny(
+                    self.conveyors[f"{stopper_id}_{destiny_stopper_id}"].set_destiny(
                         self.stoppers[destiny_stopper_id]
                     )
 
                     self.stoppers[stopper_id].set_output_conveyors(
-                        self.conveyors["{stopper_id}_{destiny_stopper_id}"],
+                        self.conveyors[f"{stopper_id}_{destiny_stopper_id}"],
                         destiny_stopper_id,
                     )
 
                     self.stoppers[destiny_stopper_id].set_input_conveyors(
-                        self.conveyors["{stopper_id}_{destiny_stopper_id}"], stopper_id
+                        self.conveyors[f"{stopper_id}_{destiny_stopper_id}"], stopper_id
                     )
 
         # List with all the container in the system
