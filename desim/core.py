@@ -153,8 +153,11 @@ class Simulation(Generic[ContentType]):
 
     def sim_run_steps(self, steps):
         while self.timed_events_manager.step < steps:
-            if self.timed_events_manager.run() and self.callback_after_step_event:
-                self.callback_after_step_event(self)
+            if not self.timed_events_manager.step % 1000:
+                print(self.timed_events_manager.step)
+            self.timed_events_manager.run()
+            # if self.callback_after_step_event:
+            #     self.callback_after_step_event(self)
 
     def sim_run_forever(self):
         try:
