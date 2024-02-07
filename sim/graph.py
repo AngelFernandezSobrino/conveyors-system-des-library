@@ -44,7 +44,7 @@ class Cycle:
         for stopper in self.stoppers:
             for system_stopper in core.stoppers.values():
                 if (
-                    system_stopper in stopper.input_conveyors
+                    system_stopper in stopper.input_conveyors_by_destiny_id
                     and system_stopper not in core.stoppers
                 ):
                     self.foreign_input_stoppers.append(
@@ -110,7 +110,7 @@ class GraphAnalizer:
         self.visited[stopper.id] = True
         self.path.append(stopper)
 
-        for output_stopper in stopper.output_conveyors.values():
+        for output_stopper in stopper.output_conveyors_by_destiny_id.values():
             if output_stopper in self.path:
                 cycle_start = self.path.index(output_stopper)
                 self.cycles.append(Cycle(self.path[cycle_start:], self.core))
@@ -125,7 +125,7 @@ class GraphAnalizer:
     # Calculate the consideration list. It has, for each stopper of the simulation, a dict for each input stopper with list of cycles where the stopper is present but the input stopper is not.
     def __calculate_consideration_list_for_inputs(self):
         for stopper in self.stoppers.values():
-            for input_stopper in stopper.input_conveyors:
+            for input_stopper in stopper.input_conveyors_by_destiny_id:
                 for cycle in self.cycles:
                     if (
                         input_stopper not in cycle.stoppers
@@ -153,7 +153,7 @@ class GraphAnalizer:
     # Calculate the consideration list. It has, for each stopper of the simulation, a dict for each output stopper with list of cycles where the output stopper is present but the stopper under consideration no.
     def __calculate_consideration_list_for_outputs(self):
         for stopper in self.stoppers.values():
-            for output_stopper in stopper.output_conveyors:
+            for output_stopper in stopper.output_conveyors_by_destiny_id:
                 for cycle in self.cycles:
                     if (
                         stopper not in cycle.stoppers
