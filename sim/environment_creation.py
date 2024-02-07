@@ -33,21 +33,18 @@ import gymnasium as gym
 from gymnasium import spaces
 
 import argparse
-from statistics import mean
 import time
 import os
-from typing import List, Union
-from sim.item import ProductTypeReferences
 
 import logging
 
 import sim.checking as checking
-import sim.mqtt as mqtt
 import sim.settings as settings
 import sim.graph as graph
 import sim.data_storage as data_storage
 
 import desim.core
+import desim.config_parser
 import sim.results_controller as results_controller
 import sim.controller as custom_behaviour
 
@@ -75,7 +72,7 @@ logging.getLogger("desym").setLevel(logging_level)
 ## Simulation configuration
 
 config_path = os.path.dirname(os.path.abspath(__file__)) + "/config.xlsx"
-config_parser = desim.helpers.ConfigParser(config_path)
+config_parser = desim.config_parser.ConfigParser(config_path)
 config_parser.parse("config_parser")
 
 ## Configure W&B
