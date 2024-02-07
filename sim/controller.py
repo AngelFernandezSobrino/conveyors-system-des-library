@@ -75,7 +75,7 @@ class SimulationController:
                     self.delay, (), {"time": 10, "no_content": True}
                 ),
                 tem.CustomEventListener(
-                    self.fill_tray_three_products,
+                    self.terminate_simulation_at_empty_tray_arrival,
                 ),
             ],
             "PT05": [
@@ -161,7 +161,7 @@ class SimulationController:
             if product is None:
                 return
 
-        for destiny_stopper_id in stopper.output_conveyors.keys():
+        for destiny_stopper_id in stopper.output_conveyors_by_destiny_id.keys():
             if (
                 stopper.s.state.control[destiny_stopper_id]
                 != desim.objects.stopper.states.StateModel.Control.LOCKED
@@ -274,6 +274,24 @@ class SimulationController:
             ):
                 product_serial_number_database[product_type_index] += 1
             product_type_index = ProductTypeReferences.product_1
+
+    def terminate_simulation_at_empty_tray_arrival(self, stopper: Stopper[Product]):
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
+            return
+        product = self.get_container_content_filter(container, no_content=True)
+
+        if product is not True:
+            return
+
+        logger.debug(f"Terminate simulation at empty tray arrival: {stopper.container} in {stopper}")
+        self.simulation.stop_simulation()
+
+        for destiny_id in stopper.output_conveyors_by_destiny_id.keys():
+            stopper.i.control_lock_by_destiny_id(destiny_id)
+
+        return
+
 
     def process(self, stopper: Stopper[Product], product_type: ProductTypeReferences):
         container = self.get_valid_occupied_container(stopper)
