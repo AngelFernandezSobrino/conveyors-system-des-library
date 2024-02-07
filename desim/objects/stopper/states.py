@@ -70,56 +70,25 @@ class StateModel:
     def __str__(self) -> str:
         return f"States(node={self.node.name}, sends={self.sends}, destinies={self.destinies}, control={self.control})"
 
-    def simplified_string(self) -> str:
-        result = f"("
-        if "node" in self.__dict__:
-            result += f"node={self.node.name}, "
-        if "sends" in self.__dict__:
-            result += f"sends={self.sends}, "
-        if "destinies" in self.__dict__:
-            result += f"destinies={self.destinies}"
-        if "control" in self.__dict__:
-            result += f"control={self.control}"
-        result += ")"
-        return result
+@dataclass
+class StateModelChange:
 
-    def get_changes(self, other: StateModel) -> str:
-        result = []
-        if self.node != other.node:
-            result.append(f"node={self.node.name} -> {other.node.name}")
+    node: StateModel.Node = None
+    sends: Dict[StopperId, StateModel.Send] = None
+    destinies: Dict[StopperId, StateModel.Destiny] = None
+    control: Dict[StopperId, StateModel.Control] = None
 
-        sends = []
-        for send in self.sends:
-            if self.sends[send] != other.sends[send]:
-                sends.append(
-                    f"{send}={self.sends[send].name} -> {other.sends[send].name}"
-                )
-
-        if len(sends) > 0:
-            result.append(f"sends=({', '.join(sends)})")
-
-        destinies = []
-        for destiny in self.destinies:
-            if self.destinies[destiny] != other.destinies[destiny]:
-                destinies.append(
-                    f"{destiny}={self.destinies[destiny].name} -> {other.destinies[destiny].name}"
-                )
-
-        if len(destinies) > 0:
-            result.append(f"destinies=({', '.join(destinies)})")
-
-        controls: list = []
-        for control in self.control:
-            if self.control[control] != other.control[control]:
-                controls.append(
-                    f"{controls}={self.control[control].name} -> {other.control[control].name}"
-                )
-
-        if len(controls) > 0:
-            result.append(f"control=({', '.join(controls)})")
-
-        return ", ".join(result)
-
+def simplified_string(self: StateModel | StateModelChange) -> str:
+    result = ""
+    if self.node is not None:
+        result += f" {self.node.name} "
+    if self.sends is not None:
+        result += f"sends {self.sends} "
+    if self.destinies is not None:
+        result += f"destinies {self.destinies} "
+    if self.control is not None:
+        result += f"control {self.control}"
+    return result
 
 class StateController:
     def __init__(self, core: core.Stopper) -> None:
@@ -148,48 +117,93 @@ class StateController:
 
         self.state_change_id = 0
 
-    def go_state(self, next_state: StateModel, side_effects=True) -> None:
+    def end_state_node_rest(self):
+        self.c.o.not_available()
 
-        changes = self.state.get_changes(next_state)
-        if changes == "":
-            return
+    def end_state_node_occupied(self):
+        for destinyId, send in self.c.s.state.sends.items():
+            if send == StateModel.Send.ONGOING:
+                self.c.o.reserve(destinyId)
+                return
 
-        prev_state = self.state
-        self.state = next_state
+    def end_state_node_sending(self):
+        for destiny_id, send in self.state.sends.items():
+            if send == StateModel.Send.DELAY:
+                self.c.o.send(destiny_id)
+                self.state.sends[destiny_id] = StateModel.Send.NOTHING
 
-        last_state_change_id = self.state_change_id
+        self.c.o.available()
+
+    def go_state_control_lock(self, stopper_id: StopperId):
+        self.state.control[stopper_id] = StateModel.Control.LOCKED
+
+    def go_state_destiny_not_available(self, stopper_id: StopperId):
+        self.state.destinies[stopper_id] = StateModel.Destiny.NOT_AVAILABLE
+
+    def go_state(self, state_changes: StateModelChange, side_effects=True) -> None:
+
+        # if self.logger.level == logging.DEBUG:
+        #     self.logger.debug(
+        #         f"To {simplified_string(state_changes)}"
+        #     )
+
+        prev_state_node = self.state.node
+
+        if state_changes.destinies is not None:
+            for destiny_id, destiny_state in state_changes.destinies.items():
+                self.state.destinies[destiny_id] = destiny_state
+
+        if state_changes.sends is not None:
+            for destiny_id, sends_state in state_changes.sends.items():
+                self.state.sends[destiny_id] = sends_state
+
+        if state_changes.control is not None:
+            for destiny_id, control_state in state_changes.control.items():
+                self.state.control[destiny_id] = control_state
+
+        if state_changes.node is not None:
+            self.state.node = state_changes.node
+
         self.state_change_id += 1
+        last_state_change_id = self.state_change_id
 
-        self.c.o.end_state(prev_state)
+        if state_changes.node is not None:
+            if (
+                    prev_state_node == StateModel.Node.REST
+                    and self.state != StateModel.Node.REST
+            ):
+                self.end_state_node_rest()
+            elif (
+                    prev_state_node == StateModel.Node.OCCUPIED
+                    and self.state != StateModel.Node.OCCUPIED
+            ):
+                self.end_state_node_occupied()
+            elif (
+                    prev_state_node == StateModel.Node.SENDING
+                    and self.state != StateModel.Node.SENDING
+            ):
+                self.end_state_node_sending()
+
+        if self.state_change_id != last_state_change_id:
+            return
 
         if self.c.external_events_controller is not None:
             self.c.external_events_controller.external_function(self.c)
+            if self.state_change_id != last_state_change_id:
+                return
 
-        if self.state_change_id != last_state_change_id + 1:
-            return
+        if self.state.node == StateModel.Node.OCCUPIED:
+            for destiny_id, destiny in self.state.destinies.items():
+                if destiny == StateModel.Destiny.AVAILABLE and self.state.control[destiny_id] == StateModel.Control.UNLOCKED:
+                    self.go_state(StateModelChange(node=StateModel.Node.SENDING, sends={ destiny_id: StateModel.Send.ONGOING }, destinies={destiny_id: StateModel.Destiny.NOT_AVAILABLE}))
+                    return
 
-        actual_state = copy.deepcopy(self.state)
-        match self.state:
-            case StateModel(StateModel.Node.OCCUPIED, sends, destinies):
-                for destinyId, destiny in destinies.items():
-                    if (
-                        destiny == StateModel.Destiny.AVAILABLE
-                        and self.state.control[destinyId] == StateModel.Control.UNLOCKED
-                    ):
-                        actual_state.node = StateModel.Node.SENDING
-                        actual_state.sends[destinyId] = StateModel.Send.ONGOING
-                        actual_state.destinies[destinyId] = StateModel.Destiny.NOT_AVAILABLE
-                        self.go_state(actual_state)
-                        return
-            case StateModel(StateModel.Node.SENDING, sends, destinies):
-                for destiny_id, destiny_state in destinies.items():
-                    if sends[destiny_id] == StateModel.Send.ONGOING:
-                        actual_state.sends[destiny_id] = StateModel.Send.DELAY
-                        self.go_state(actual_state)
-                        return
+        if self.state.node == StateModel.Node.SENDING:
+            for destiny_id, destiny_state in self.state.destinies.items():
+                if self.state.sends[destiny_id] == StateModel.Send.ONGOING:
+                    self.go_state(StateModelChange(sends={ destiny_id: StateModel.Send.DELAY }))
+                    return
 
-                    if sends[destiny_id] == StateModel.Send.DELAY:
-                        actual_state.node = StateModel.Node.REST
-                        actual_state.sends[destiny_id] = StateModel.Send.NOTHING
-                        self.go_state(actual_state)
-                        return
+                if self.state.sends[destiny_id] == StateModel.Send.DELAY:
+                    self.go_state(StateModelChange(node=StateModel.Node.REST))
+                    return

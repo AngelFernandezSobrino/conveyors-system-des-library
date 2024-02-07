@@ -21,7 +21,7 @@ class InputEventsController:
         )
 
     def reserve(self) -> None:
-        self.logger.debug("Reserved by origin")
+        if self.logger.level == logging.DEBUG: self.logger.debug("Reserved by origin")
         if self.c.s.state.state != StateModel.S.AVAILABLE:
             raise Exception(
                 f"Fatal error: Actual state is {self.c.s.state}, reserve event is not allowed"
@@ -30,7 +30,7 @@ class InputEventsController:
         self.c.s.go_state(None, StateModel(StateModel.S.NOT_AVAILABLE_BY_MOVING))
 
     def receive(self, container: desim.objects.container.Container) -> None:
-        self.logger.debug(f"Receive {container}")
+        if self.logger.level == logging.DEBUG: self.logger.debug(f"Receive {container}")
         if self.c.s.state.state != StateModel.S.WAITING_RECEIVE:
             raise Exception(
                 f"Fatal error: Actual state is {self.c.s.state}, receive event is not allowed"
@@ -40,7 +40,7 @@ class InputEventsController:
         self.c.s.go_state(None, StateModel(StateModel.S.MOVING))
 
     def destiny_available(self) -> None:
-        self.logger.debug("Destiny is available")
+        if self.logger.level == logging.DEBUG: self.logger.debug("Destiny is available")
         if (
             self.c.s.state.state != StateModel.S.NOT_AVAILABLE
             and self.c.s.state.state != StateModel.S.AVAILABLE
@@ -55,7 +55,7 @@ class InputEventsController:
         self.c.s.go_state(None, StateModel(StateModel.S.AVAILABLE))
 
     def destiny_not_available(self) -> None:
-        self.logger.debug("Destiny isn't available")
+        if self.logger.level == logging.DEBUG: self.logger.debug("Destiny isn't available")
         if (
             self.c.s.state.state != StateModel.S.AVAILABLE
             and self.c.s.state.state != StateModel.S.WAITING_RECEIVE
@@ -84,11 +84,11 @@ class OutputEventsController:
         )
 
     def reserve(self) -> None:
-        self.logger.debug("Reserve destiny")
+        if self.logger.level == logging.DEBUG: self.logger.debug("Reserve destiny")
         self.c.destiny.i.reserve()
 
     def send(self) -> None:
-        self.logger.debug(f"Send {self.c.container} to destiny")
+        if self.logger.level == logging.DEBUG: self.logger.debug(f"Send {self.c.container} to destiny")
         if self.c.container is None:
             raise Exception("Fatal Error: Tray is None, WTF")
         container = self.c.container
@@ -96,11 +96,11 @@ class OutputEventsController:
         self.c.destiny.i.receive(container)
 
     def available(self) -> None:
-        self.logger.debug("Available to origin")
+        if self.logger.level == logging.DEBUG: self.logger.debug("Available to origin")
         self.c.origin.i.destiny_available(self.c.id)
 
     def not_available(self) -> None:
-        self.logger.debug("Not available to origin")
+        if self.logger.level == logging.DEBUG: self.logger.debug("Not available to origin")
         self.c.origin.i.destiny_not_available(self.c.id)
 
     def end_state(self, state: StateModel) -> None:

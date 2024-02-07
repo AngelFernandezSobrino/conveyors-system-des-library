@@ -59,21 +59,27 @@ class StateController:
         self.state: StateModel = StateModel(StateModel.S.AVAILABLE)
         self.state_change_id = 0
 
+
     def go_state(self, context: Any, state: StateModel) -> None:
-        if self.c.debug:
-            self.logger.debug(f"From {self.state} -> To {state}")
+        # if self.logger.level == logging.DEBUG:
+        #     self.logger.debug(f"From {self.state} -> To {state}")
+
         if state == self.state:
+            if self.logger.level == logging.DEBUG:
+                self.logger.debug(f"From {self.state} -> To {state}")
+
+            pass
             return
 
-        last_state_change_id = self.state_change_id
         self.state_change_id += 1
+        last_state_change_id = self.state_change_id
 
         prev_state = self.state
         self.state = state
 
         self.c.o.end_state(prev_state)
 
-        if self.state_change_id != last_state_change_id + 1:
+        if self.state_change_id != last_state_change_id:
             return
 
         match self.state:
