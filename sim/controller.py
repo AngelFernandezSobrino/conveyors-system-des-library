@@ -287,8 +287,8 @@ class SimulationController:
         logger.debug(f"Terminate simulation at empty tray arrival: {stopper.container} in {stopper}")
         self.simulation.stop_simulation()
 
-        for destiny_id in stopper.output_conveyors_by_destiny_id.keys():
-            stopper.i.control_lock_by_destiny_id(destiny_id)
+        # for destiny_id in stopper.output_conveyors_by_destiny_id.keys():
+        #     stopper.i.control_lock_by_destiny_id(destiny_id)
 
         return
 

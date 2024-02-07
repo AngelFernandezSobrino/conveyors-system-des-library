@@ -3,13 +3,14 @@ import argparse
 import time
 import os
 
-from sympy import Product
 from desim.events_manager import CustomEventListener
 from sim import item
 
 import logging
 
 # import sim.checking as checking
+
+from sim.item import Product
 
 # import sim.mqtt as mqtt
 import sim.settings as settings
@@ -89,7 +90,7 @@ behavior = custom_behaviour.SimulationController(
 
 sim_core.register_external_events(
     behavior.external_functions,
-    step_callback,
+    # step_callback,
 )
 
 for data_storage_step in range(0, settings.STEPS, 100):
@@ -128,4 +129,4 @@ logger.info(
     f"Product {item.ProductTypeReferences.product_3.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_3]}"
 )
 
-data_storage.save_data_to_file(False, "profiling")
+data_storage.save_data_to_file()
