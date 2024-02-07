@@ -35,12 +35,11 @@ DestinyId = str
 @dataclass
 class StateModel:
     class S(Enum):
-        AVAILABLE = 1
-        # NOT_AVAILABLE_BY_DESTINY = 2
-        NOT_AVAILABLE_BY_MOVING = 3
-        MOVING = 4
-        NOT_AVAILABLE = 5
-        WAITING_RECEIVE = 6
+        AVAILABLE = 0
+        NOT_AVAILABLE_BY_MOVING = 1
+        MOVING = 2
+        NOT_AVAILABLE = 3
+        WAITING_RECEIVE = 4
 
     state: S
 

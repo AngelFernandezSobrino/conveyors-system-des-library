@@ -1,11 +1,10 @@
 from __future__ import annotations
 import copy
+import logging
 from enum import Enum
 from typing import TYPE_CHECKING, Dict
 
 from attr import dataclass
-from torch import ne
-
 
 from desim.custom_logging import (
     get_logger,
@@ -17,19 +16,17 @@ from desim.custom_logging import (
     LOGGER_STOPPER_NAME,
 )
 
-
 if TYPE_CHECKING:
     from desim.objects.stopper import StopperId
     from . import core
 
-
 @dataclass
 class StateModel:
     class Node(Enum):
-        REST = 1
-        RESERVED = 2
-        OCCUPIED = 3
-        SENDING = 4
+        REST = 0
+        RESERVED = 1
+        OCCUPIED = 2
+        SENDING = 3
 
         def __str__(self) -> str:
             return self.name
@@ -38,9 +35,10 @@ class StateModel:
             return self.name
 
     class Send(Enum):
-        NOTHING = 1
-        ONGOING = 2
-        DELAY = 3
+        NOTHING = 0
+        ONGOING = 1
+        DELAY = 2
+        SENT = 3
 
         def __str__(self) -> str:
             return str(self.value)
@@ -49,8 +47,8 @@ class StateModel:
             return self.name
 
     class Destiny(Enum):
-        AVAILABLE = 1
-        NOT_AVAILABLE = 2
+        AVAILABLE = 0
+        NOT_AVAILABLE = 1
 
         def __str__(self) -> str:
             return str(self.value)
@@ -59,8 +57,8 @@ class StateModel:
             return self.name
 
     class Control(Enum):
-        LOCKED = 1
-        UNLOCKED = 2
+        LOCKED = 0
+        UNLOCKED = 1
 
     node: Node
     sends: Dict[StopperId, Send]
