@@ -73,8 +73,11 @@ class Stopper(Generic[ContentType]):
             self.simulation.description,
         )
 
-        self.output_conveyors: Dict[desim.objects.stopper.StopperId, Conveyor] = {}
-        self.input_conveyors: Dict[desim.objects.stopper.StopperId, Conveyor] = {}
+        self.output_conveyors_by_destiny_id: Dict[desim.objects.stopper.StopperId, Conveyor] = {}
+        self.input_conveyors_by_destiny_id: Dict[desim.objects.stopper.StopperId, Conveyor] = {}
+
+        self.input_conveyors_by_conveyor_id: Dict[desim.objects.conveyor.ConveyorId, Conveyor] = {}
+        self.output_conveyors_by_conveyor_id: Dict[desim.objects.conveyor.ConveyorId, Conveyor] = {}
 
         # Container storage pointer
         self.container: Container[ContentType] | None = None
@@ -92,17 +95,22 @@ class Stopper(Generic[ContentType]):
         input_conveyor: Conveyor,
         origin_stopper_id: desim.objects.stopper.StopperId,
     ) -> None:
-        if input_conveyor not in self.input_conveyors:
-            self.input_conveyors[origin_stopper_id] = input_conveyor
+        if input_conveyor not in self.input_conveyors_by_destiny_id:
+            self.input_conveyors_by_destiny_id[origin_stopper_id] = input_conveyor
+
+        if input_conveyor not in self.input_conveyors_by_conveyor_id:
+            self.input_conveyors_by_conveyor_id[input_conveyor.id] = input_conveyor
 
     def set_output_conveyors(
         self,
         output_conveyor: Conveyor,
         destiny_stopper_id: desim.objects.stopper.StopperId,
     ) -> None:
-        if output_conveyor not in self.output_conveyors:
-            self.output_conveyors[destiny_stopper_id] = output_conveyor
+        if output_conveyor not in self.output_conveyors_by_destiny_id:
+            self.output_conveyors_by_destiny_id[destiny_stopper_id] = output_conveyor
 
+        if output_conveyor not in self.output_conveyors_by_conveyor_id:
+            self.output_conveyors_by_conveyor_id[output_conveyor.id] = output_conveyor
 
 class BehaviorInfo:
     def __init__(self, stopper_id, stopper_description, simulation_description):
