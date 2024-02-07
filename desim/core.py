@@ -62,6 +62,12 @@ class Simulation(Generic[ContentType]):
 
         self.stopper_external_events_controller = ExternalFunctionController()
 
+        self.system_external_events = None
+
+        self.callback_after_step_event = None
+
+        self.stop_simulation_signal = False
+
         # Build simulation graph
 
         self.stoppers: dict[desim.objects.stopper.StopperId, Stopper[ContentType]] = {}
@@ -127,6 +133,9 @@ class Simulation(Generic[ContentType]):
             for event in events:
                 self.timed_events_manager.add(event, step)
 
+    def stop_simulation(self):
+        self.stop_simulation_signal = True
+
     def sim_run_real_time_forever(self, real_time_step: float):
         try:
             while True:
@@ -152,7 +161,7 @@ class Simulation(Generic[ContentType]):
             time.sleep(real_time_step - ((time.time() - start_time) % real_time_step))
 
     def sim_run_steps(self, steps):
-        while self.timed_events_manager.step < steps:
+        while self.timed_events_manager.step < steps and not self.stop_simulation_signal:
             if not self.timed_events_manager.step % 1000:
                 print(self.timed_events_manager.step)
             self.timed_events_manager.run()
