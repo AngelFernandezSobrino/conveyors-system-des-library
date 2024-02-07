@@ -65,7 +65,7 @@ def save_data_to_file(save: bool | None = None, name: str | None = None) -> None
     now = datetime.now()
 
     # dd/mm/YY H:M:S
-    dt_string: str = now.strftime("%Y%m%d%H%M%S")
+    dt_string: str = now.strftime("%Y-%m-%d-%H-%M-%S")
 
     print("-----------------------------------")
     print("Fila data storage\n")
@@ -99,7 +99,7 @@ def save_data_to_file(save: bool | None = None, name: str | None = None) -> None
 
     print("Saving data to file...")
 
-    with open(f"data/simulations/results/{dt_string}.csv", "w") as f:
+    with open(f"data/simulations/results/{dt_string}.csv", "x") as f:
 
         writer = csv.writer(f)
 
