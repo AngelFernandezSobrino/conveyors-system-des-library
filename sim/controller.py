@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from stable_baselines3 import PPO
+
 import desim.events_manager as tem
+from sim.environment import action_to_product_type, observation_from_simulator
 import sim.results_controller
 import sim.item
 import desim.objects.container
@@ -20,17 +23,9 @@ if TYPE_CHECKING:
 import logging
 
 logger = custom_logging.get_formated_logger("mains.cont", "{name: <24s} - {message}")
+# logger.setLevel(logging.DEBUG)
 
 from sim.item import Product, ProductTypeReferences
-
-tray_index = 1
-product_type_index: ProductTypeReferences = ProductTypeReferences.product_1
-
-product_serial_number_database: Dict[ProductTypeReferences, int] = {
-    ProductTypeReferences.product_1: 1,
-    ProductTypeReferences.product_2: 1,
-    ProductTypeReferences.product_3: 1,
-}
 
 
 class SimulationController:
@@ -38,8 +33,16 @@ class SimulationController:
         self.results_production.increment(context.item_type)  # type: ignore
 
     def __init__(self, simulation: desim.core.Simulation, max_containers_ammount: int):
+
         self.simulation = simulation
         self.max_containers_ammount = max_containers_ammount
+
+        self.tray_index = 1
+        self.product_type_index: ProductTypeReferences = ProductTypeReferences.product_1
+
+        self.products_repository = ProductsRepository()
+
+        # self.model = PPO.load("sim/ppo-version-4")
 
         self.results_production = sim.results_controller.CountersController(
             sim.item.ProductTypeReferences
@@ -182,10 +185,11 @@ class SimulationController:
         ):
             return
 
-        global tray_index
         if len(self.simulation.containers) < self.max_containers_ammount:
-            new_tray = desim.objects.container.Container[Product](str(tray_index), None)
-            tray_index += 1
+            new_tray = desim.objects.container.Container[Product](
+                str(self.tray_index), None
+            )
+            self.tray_index += 1
             logger.debug(f"External container {new_tray} created")
             self.simulation.containers.append(new_tray)
             logger.debug(f"Reserve PT01 with {new_tray}")
@@ -216,19 +220,15 @@ class SimulationController:
         if product is not True:
             return
 
-        global product_serial_number_database
-        logger.debug(
-            f"Filling {stopper.container} in {stopper} with product id {product_serial_number_database[product_type_index]} of type {product_type_index.name}"
+        new_product = self.products_repository.get_next_product(
+            ProductTypeReferences.product_1
         )
 
-        if container.load(
-            Product(
-                str(product_serial_number_database[product_type_index]),
-                ProductTypeReferences.product_1,
-                "0",
-            )
-        ):
-            product_serial_number_database[product_type_index] += 1
+        logger.debug(
+            f"Filling {stopper.container} in {stopper} with product id {new_product.id} of type {new_product.item_type.name}"
+        )
+
+        container.load(new_product)
 
     def fill_tray_three_products(self, stopper: Stopper[Product]):
         container = self.get_valid_occupied_container(stopper)
@@ -239,41 +239,21 @@ class SimulationController:
         if product is not True:
             return
 
-        global product_type_index, product_serial_number_database
+        new_product = self.products_repository.get_next_product(self.product_type_index)
+
+        match self.product_type_index:
+            case ProductTypeReferences.product_1:
+                self.product_type_index = ProductTypeReferences.product_2
+            case ProductTypeReferences.product_2:
+                self.product_type_index = ProductTypeReferences.product_3
+            case ProductTypeReferences.product_3:
+                self.product_type_index = ProductTypeReferences.product_1
+
         logger.debug(
-            f"Filling {stopper.container} in {stopper} with product id {product_serial_number_database[product_type_index]} of type {product_type_index.name}"
+            f"Filling {stopper.container} in {stopper} with product id {new_product.id} of type {new_product.item_type.name}"
         )
 
-        if product_type_index == ProductTypeReferences.product_1:
-            if container.load(
-                Product(
-                    str(product_serial_number_database[product_type_index]),
-                    ProductTypeReferences.product_1,
-                    "0",
-                )
-            ):
-                product_serial_number_database[product_type_index] += 1
-            product_type_index = ProductTypeReferences.product_2
-        elif product_type_index == ProductTypeReferences.product_2:
-            if container.load(
-                Product(
-                    str(product_serial_number_database[product_type_index]),
-                    ProductTypeReferences.product_2,
-                    "0",
-                )
-            ):
-                product_serial_number_database[product_type_index] += 1
-            product_type_index = ProductTypeReferences.product_3
-        elif product_type_index == ProductTypeReferences.product_3:
-            if container.load(
-                Product(
-                    str(product_serial_number_database[product_type_index]),
-                    ProductTypeReferences.product_3,
-                    "0",
-                )
-            ):
-                product_serial_number_database[product_type_index] += 1
-            product_type_index = ProductTypeReferences.product_1
+        container.load(new_product)
 
     def terminate_simulation_at_empty_tray_arrival(self, stopper: Stopper[Product]):
         container = self.get_valid_occupied_container(stopper)
@@ -284,7 +264,9 @@ class SimulationController:
         if product is not True:
             return
 
-        logger.debug(f"Terminate simulation at empty tray arrival: {stopper.container} in {stopper}")
+        logger.debug(
+            f"Terminate simulation at empty tray arrival: {stopper.container} in {stopper} at step {self.simulation.timed_events_manager.step}"
+        )
         self.simulation.stop_simulation()
 
         # for destiny_id in stopper.output_conveyors_by_destiny_id.keys():
@@ -292,6 +274,31 @@ class SimulationController:
 
         return
 
+    def reinforced_learning_product_input(self, stopper: Stopper[Product]):
+
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
+            return
+        product = self.get_container_content_filter(container, no_content=True)
+
+        if product is not True:
+            return
+
+        action, _states = self.model.predict(
+            observation_from_simulator(self.simulation), deterministic=True
+        )
+
+        print(f"Action: {action}")
+
+        product_type = action_to_product_type(int(action))
+
+        new_product = self.products_repository.get_next_product(product_type)
+
+        logger.debug(
+            f"Filling {stopper.container} in {stopper} with product id {new_product.id} of type {new_product.item_type.name}"
+        )
+
+        container.load(new_product)
 
     def process(self, stopper: Stopper[Product], product_type: ProductTypeReferences):
         container = self.get_valid_occupied_container(stopper)
@@ -421,3 +428,25 @@ class SimulationController:
             raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
 
         return stopper.container
+
+
+class ProductsRepository:
+
+    def __init__(self) -> None:
+
+        self.product_serial_number_database: Dict[ProductTypeReferences, int] = {
+            ProductTypeReferences.product_1: 0,
+            ProductTypeReferences.product_2: 0,
+            ProductTypeReferences.product_3: 0,
+        }
+
+    def get_next_product(self, product_type: ProductTypeReferences, data={}, state="0"):
+
+        self.product_serial_number_database[product_type] += 1
+
+        return Product(
+            str(self.product_serial_number_database[product_type]),
+            product_type,
+            data,
+            state,
+        )
