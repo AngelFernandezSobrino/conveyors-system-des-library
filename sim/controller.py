@@ -32,7 +32,16 @@ class SimulationController:
     def production_event_listener(self, context: sim.item.Product):
         self.results_production.increment(context.item_type)  # type: ignore
 
-    def __init__(self, simulation: desim.core.Simulation, max_containers_ammount: int):
+    def __init__(
+        self,
+        simulation: desim.core.Simulation,
+        max_containers_ammount: int,
+        rl: bool = False,
+        rl_training: bool = False,
+    ):
+
+        self.rl = rl
+        self.rl_training = rl_training
 
         self.simulation = simulation
         self.max_containers_ammount = max_containers_ammount
@@ -42,7 +51,8 @@ class SimulationController:
 
         self.products_repository = ProductsRepository()
 
-        # self.model = PPO.load("sim/ppo-version-4")
+        if self.rl_training:
+            self.model = PPO.load("sim/ppo-version-1")
 
         self.results_production = sim.results_controller.CountersController(
             sim.item.ProductTypeReferences
@@ -76,10 +86,7 @@ class SimulationController:
             "PT06": [
                 tem.CustomEventListener(
                     self.delay, (), {"time": 10, "no_content": True}
-                ),
-                tem.CustomEventListener(
-                    self.terminate_simulation_at_empty_tray_arrival,
-                ),
+                )
             ],
             "PT05": [
                 tem.CustomEventListener(self.bifurcation_pt05),
@@ -132,6 +139,25 @@ class SimulationController:
                 ),
             ],
         }
+
+        if self.rl:
+            self.stopper_external_functions["PT06"].append(
+                tem.CustomEventListener(
+                    self.reinforced_learning_product_input,
+                )
+            )
+        elif self.rl_training:
+            self.stopper_external_functions["PT06"].append(
+                tem.CustomEventListener(
+                    self.terminate_simulation_at_empty_tray_arrival,
+                )
+            )
+        else:
+            self.stopper_external_functions["PT06"].append(
+                tem.CustomEventListener(
+                    self.fill_tray_three_products,
+                )
+            )
 
         for stopper_id, functions in self.stopper_external_functions.items():
             for event in functions:
@@ -287,8 +313,6 @@ class SimulationController:
         action, _states = self.model.predict(
             observation_from_simulator(self.simulation), deterministic=True
         )
-
-        print(f"Action: {action}")
 
         product_type = action_to_product_type(int(action))
 

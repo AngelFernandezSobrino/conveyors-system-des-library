@@ -1,11 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-import time
 import os
 
 from desim.events_manager import CustomEventListener
-
-import logging
 
 from sim.item import Product
 import sim.settings as settings
@@ -19,12 +16,6 @@ if TYPE_CHECKING:
 
 import sim.controller as custom_behaviour
 
-logger = logging.getLogger("simul")
-logFormatter = logging.Formatter("\N{ESC}[0m{name: <30s} - {message}", style="{")
-consoleHandler = logging.StreamHandler()
-consoleHandler.setFormatter(logFormatter)
-logger.addHandler(consoleHandler)
-
 
 def get_simulator_config():
 
@@ -36,15 +27,8 @@ def get_simulator_config():
 
 
 def create_simulator(
-    config_parser: desim.config_parser.ConfigParser, verbose: bool = False
+    config_parser: desim.config_parser.ConfigParser, max_containers verbose: bool = False
 ):
-
-    if verbose:
-        logging_level = logging.DEBUG
-    else:
-        logging_level = logging.INFO
-
-    logger.setLevel(logging_level)
 
     sim_core = desim.core.Simulation[Product](config_parser.config, debug=verbose)
 

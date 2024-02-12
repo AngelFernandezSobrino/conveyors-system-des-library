@@ -31,18 +31,16 @@ def step_callback(core: desim.core.Simulation):
 
 
 def production_update_callback(
-    controller: desim.controllers.results_controller.CounterResultsController,
+    controller: sim.results_controller.CountersController,
     index: ProductTypeReferences,
     time: int,
 ) -> None:
     wandb_data_dict[f"results/production/{index.name}"] = controller.counters[index]
 
 
-def time_update_callback(
-    results: desim.controllers.results_controller.TimesResultsController, step: int
-):
+def time_update_callback(results: sim.results_controller.CronoController, step: int):
     wandb_data_dict["results/times"] = {
-        key: results.accumulated_times[key] for key in ["DIR04", "PT05", "PT06"]
+        key: results.stoppersResults[key] for key in ["DIR04", "PT05", "PT06"]
     }
 
 

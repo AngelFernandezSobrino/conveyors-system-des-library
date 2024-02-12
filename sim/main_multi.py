@@ -71,7 +71,7 @@ for i in range(1, 12):
     settings.MAX_CONTAINERS_AMMOUNT = i
     print(f"max_containers_ammount: {settings.MAX_CONTAINERS_AMMOUNT}")
 
-    sim_core = desim.core.Simulation[Product](config_parser.config, debug=args.verbose)
+    sim_core = desim.core.Simulation[Product](config_parser.config)
 
     behavior = custom_behaviour.SimulationController(
         sim_core, settings.MAX_CONTAINERS_AMMOUNT
