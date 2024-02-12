@@ -25,6 +25,7 @@ consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
 logger.addHandler(consoleHandler)
 
+
 def get_simulator_config():
 
     config_path = os.path.dirname(os.path.abspath(__file__)) + "/config.xlsx"
@@ -32,7 +33,11 @@ def get_simulator_config():
     config_parser.parse("config_parser")
 
     return config_parser
-def create_simulator(config_parser: desim.config_parser.ConfigParser, verbose: bool = False):
+
+
+def create_simulator(
+    config_parser: desim.config_parser.ConfigParser, verbose: bool = False
+):
 
     if verbose:
         logging_level = logging.DEBUG
@@ -61,24 +66,3 @@ def create_simulator(config_parser: desim.config_parser.ConfigParser, verbose: b
         )
 
     return sim_core, behavior
-
-
-    behavior.results_time.update_all_times()
-
-
-    ## Print simulation results
-
-    logger.info(f"Simulation spent time: {time.time() - start}")
-    logger.info(f"Simulation duration: {settings.STEPS*settings.STEP_TO_TIME / 3600} hours")
-    logger.info("Production results:")
-    logger.info(
-        f"Product {item.ProductTypeReferences.product_1.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_1]}"
-    )
-    logger.info(
-        f"Product {item.ProductTypeReferences.product_2.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_2]}"
-    )
-    logger.info(
-        f"Product {item.ProductTypeReferences.product_3.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_3]}"
-    )
-
-    data_storage.save_data_to_file()
