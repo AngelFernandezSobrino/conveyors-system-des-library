@@ -49,7 +49,9 @@ def save_actual_results(
     for product_type in ProductTypeReferences:
         results[f"production.{product_type.name}"][
             controller.simulation.timed_events_manager.step
-        ] = controller.results_production.get(product_type)
+        ] = controller.results_production.get(
+            product_type  # type: ignore
+        )
 
     results["stoppers_occupied"][controller.simulation.timed_events_manager.step] = (
         sim.results_controller.calculate_ratio_non_rest_stoppers(controller.simulation)

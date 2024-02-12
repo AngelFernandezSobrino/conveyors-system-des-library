@@ -62,9 +62,9 @@ class Simulation(Generic[ContentType]):
 
         self.stopper_external_events_controller = ExternalFunctionController()
 
-        self.system_external_events = None
+        self.system_external_events: dict[Step, list[CustomEventListener]]
 
-        self.callback_after_step_event = None
+        self.callback_after_step_event: Callable[[Simulation], None] | None
 
         self.stop_simulation_signal = False
 
@@ -161,9 +161,9 @@ class Simulation(Generic[ContentType]):
             time.sleep(real_time_step - ((time.time() - start_time) % real_time_step))
 
     def sim_run_steps(self, steps):
-        while self.timed_events_manager.step < steps and not self.stop_simulation_signal:
-            if not self.timed_events_manager.step % 1000:
-                print(self.timed_events_manager.step)
+        while (
+            self.timed_events_manager.step < steps and not self.stop_simulation_signal
+        ):
             self.timed_events_manager.run()
             # if self.callback_after_step_event:
             #     self.callback_after_step_event(self)
