@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-import openpyxl as xl # type: ignore
+import openpyxl as xl  # type: ignore
 import itertools
 
 import pprint

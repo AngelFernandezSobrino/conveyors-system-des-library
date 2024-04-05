@@ -28,7 +28,7 @@ logger = custom_logging.get_formated_logger("mains.cont", "{name: <24s} - {messa
 from sim.item import Product, ProductTypeReferences
 
 
-class SimulationController:
+class SimulationControllerBaseline:
     def production_event_listener(self, context: sim.item.Product):
         self.results_production.increment(context.item_type)  # type: ignore
 
@@ -36,12 +36,7 @@ class SimulationController:
         self,
         simulation: desim.core.Simulation,
         max_containers_ammount: int,
-        rl: bool = False,
-        rl_training: bool = False,
     ):
-
-        self.rl = rl
-        self.rl_training = rl_training
 
         self.simulation = simulation
         self.max_containers_ammount = max_containers_ammount
@@ -50,9 +45,6 @@ class SimulationController:
         self.product_type_index: ProductTypeReferences = ProductTypeReferences.product_1
 
         self.products_repository = ProductsRepository()
-
-        if self.rl_training:
-            self.model = PPO.load("sim/ppo-version-1")
 
         self.results_production = sim.results_controller.CountersController(
             sim.item.ProductTypeReferences
@@ -86,7 +78,10 @@ class SimulationController:
             "PT06": [
                 tem.CustomEventListener(
                     self.delay, (), {"time": 10, "no_content": True}
-                )
+                ),
+                tem.CustomEventListener(
+                    self.fill_tray_three_products,
+                ),
             ],
             "PT05": [
                 tem.CustomEventListener(self.bifurcation_pt05),
@@ -140,24 +135,9 @@ class SimulationController:
             ],
         }
 
-        if self.rl:
-            self.stopper_external_functions["PT06"].append(
-                tem.CustomEventListener(
-                    self.reinforced_learning_product_input,
-                )
-            )
-        elif self.rl_training:
-            self.stopper_external_functions["PT06"].append(
-                tem.CustomEventListener(
-                    self.terminate_simulation_at_empty_tray_arrival,
-                )
-            )
-        else:
-            self.stopper_external_functions["PT06"].append(
-                tem.CustomEventListener(
-                    self.fill_tray_three_products,
-                )
-            )
+    def register_events(self):
+
+        self.simulation.register_external_events(self.external_functions)
 
         for stopper_id, functions in self.stopper_external_functions.items():
             for event in functions:
@@ -257,6 +237,7 @@ class SimulationController:
         container.load(new_product)
 
     def fill_tray_three_products(self, stopper: Stopper[Product]):
+        print("Fill tray three products")
         container = self.get_valid_occupied_container(stopper)
         if container is None:
             return
@@ -274,49 +255,6 @@ class SimulationController:
                 self.product_type_index = ProductTypeReferences.product_3
             case ProductTypeReferences.product_3:
                 self.product_type_index = ProductTypeReferences.product_1
-
-        logger.debug(
-            f"Filling {stopper.container} in {stopper} with product id {new_product.id} of type {new_product.item_type.name}"
-        )
-
-        container.load(new_product)
-
-    def terminate_simulation_at_empty_tray_arrival(self, stopper: Stopper[Product]):
-        container = self.get_valid_occupied_container(stopper)
-        if container is None:
-            return
-        product = self.get_container_content_filter(container, no_content=True)
-
-        if product is not True:
-            return
-
-        logger.debug(
-            f"Terminate simulation at empty tray arrival: {stopper.container} in {stopper} at step {self.simulation.timed_events_manager.step}"
-        )
-        self.simulation.stop_simulation()
-
-        # for destiny_id in stopper.output_conveyors_by_destiny_id.keys():
-        #     stopper.i.control_lock_by_destiny_id(destiny_id)
-
-        return
-
-    def reinforced_learning_product_input(self, stopper: Stopper[Product]):
-
-        container = self.get_valid_occupied_container(stopper)
-        if container is None:
-            return
-        product = self.get_container_content_filter(container, no_content=True)
-
-        if product is not True:
-            return
-
-        action, _states = self.model.predict(
-            observation_from_simulator(self.simulation), deterministic=True
-        )
-
-        product_type = action_to_product_type(int(action))
-
-        new_product = self.products_repository.get_next_product(product_type)
 
         logger.debug(
             f"Filling {stopper.container} in {stopper} with product id {new_product.id} of type {new_product.item_type.name}"
@@ -452,6 +390,92 @@ class SimulationController:
             raise Exception(f"Fatal error: Tray is None, WTF {stopper.container}")
 
         return stopper.container
+
+
+class SimulationControllerReinforcedTraining(SimulationControllerBaseline):
+
+    def __init__(self, simulation: desim.core.Simulation, max_containers_ammount: int):
+        """
+        docstring
+        """
+        super().__init__(
+            simulation=simulation, max_containers_ammount=max_containers_ammount
+        )
+
+        self.stopper_external_functions["PT06"] = [
+            tem.CustomEventListener(self.delay, (), {"time": 10, "no_content": True}),
+            tem.CustomEventListener(
+                self.terminate_simulation_at_empty_tray_arrival,
+            ),
+        ]
+
+    def terminate_simulation_at_empty_tray_arrival(self, stopper: Stopper[Product]):
+
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
+            return
+        product = self.get_container_content_filter(container, no_content=True)
+
+        if product is not True:
+            return
+        logger.debug(
+            f"Terminate simulation at empty tray arrival: {stopper.container} in {stopper} at step {self.simulation.timed_events_manager.step}"
+        )
+        self.simulation.stop_simulation()
+
+        # for destiny_id in stopper.output_conveyors_by_destiny_id.keys():
+        #     stopper.i.control_lock_by_destiny_id(destiny_id)
+
+        return
+
+
+class SimulationControllerReinforcedAlgorithm(SimulationControllerBaseline):
+
+    def __init__(
+        self,
+        simulation: desim.core.Simulation,
+        max_containers_ammount: int,
+        rl_model: PPO,
+    ):
+        """
+        docstring
+        """
+        super().__init__(
+            simulation=simulation, max_containers_ammount=max_containers_ammount
+        )
+
+        self.model = rl_model
+
+        self.stopper_external_functions["PT06"] = [
+            tem.CustomEventListener(self.delay, (), {"time": 10, "no_content": True}),
+            tem.CustomEventListener(
+                self.reinforced_learning_product_input,
+            ),
+        ]
+
+    def reinforced_learning_product_input(self, stopper: Stopper[Product]):
+
+        container = self.get_valid_occupied_container(stopper)
+        if container is None:
+            return
+        product = self.get_container_content_filter(container, no_content=True)
+
+        if product is not True:
+            return
+
+        action, _states = self.model.predict(
+            observation_from_simulator(self.simulation), deterministic=True
+        )
+
+        product_type = action_to_product_type(int(action))
+
+        new_product = self.products_repository.get_next_product(product_type)
+
+        logger.debug(
+            f"Filling {stopper.container} in {stopper} with product id {new_product.id} of type {new_product.item_type.name}"
+        )
+
+        container.load(new_product)
 
 
 class ProductsRepository:

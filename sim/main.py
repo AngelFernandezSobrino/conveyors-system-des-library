@@ -84,14 +84,13 @@ wandb_enabled = False
 
 sim_core = desim.core.Simulation[Product](config_parser.config, debug=args.verbose)
 
-behavior = custom_behaviour.SimulationController(
+behavior = custom_behaviour.SimulationControllerReinforcedTraining(
     sim_core, settings.MAX_CONTAINERS_AMMOUNT
 )
 
-sim_core.register_external_events(
-    behavior.external_functions,
-    # step_callback,
-)
+# sim_core.register_external_events(step_callback)
+
+behavior.register_events()
 
 for data_storage_step in range(0, settings.STEPS, 100):
     sim_core.timed_events_manager.add(
@@ -111,13 +110,17 @@ start = time.time()
 
 sim_core.sim_run_steps(settings.STEPS)
 
+print(sim_core.dump())
+
 behavior.results_time.update_all_times()
 
 
 ## Print simulation results
 
 logger.info(f"Simulation spent time: {time.time() - start}")
-logger.info(f"Simulation duration: {settings.STEPS*settings.STEP_TO_TIME / 3600} hours")
+logger.info(
+    f"Simulation duration: {sim_core.timed_events_manager.step*settings.STEP_TO_TIME / 60} min"
+)
 logger.info("Production results:")
 logger.info(
     f"Product {item.ProductTypeReferences.product_1.name}: {behavior.results_production.counters[item.ProductTypeReferences.product_1]}"

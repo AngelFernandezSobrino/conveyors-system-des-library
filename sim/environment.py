@@ -1,16 +1,14 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 import gymnasium as gym
 from gymnasium import spaces
 
 from typing import Dict
 
 import numpy as np
+from sympy import N
 
 import desim.config_parser
-from desim.objects import conveyor
-from desim.objects.stopper.states import StateModel as StopperStateModel
-from desim.objects.conveyor.states import StateModel as ConveyorStateModel
 from sim import item, settings
 
 from sim.environment_wrappers import (
@@ -20,9 +18,9 @@ from sim.environment_wrappers import (
 )
 
 if TYPE_CHECKING:
-    import sim.controller
+    import desim.core
 
-from sim.factory import get_simulator_config, create_simulator
+from sim.factory import get_simulator_config, create_simulator_for_training
 
 
 class CustomEnv(gym.Env):
@@ -31,16 +29,31 @@ class CustomEnv(gym.Env):
     metadata = {"render_modes": ["results_interface"]}
 
     def __init__(
-        self, max_containers, episode_time, time_step, render_mode="results_interface"
+        self,
+        max_containers: int = 10,
+        simulation_time: float = 3600,
+        step_to_time: float = 0.1,
+        render_mode="ansi",
     ):
         super().__init__()
 
         self.simulator_config = get_simulator_config()
-        self.simulator, self.simulator_controller = create_simulator(
-            self.simulator_config
-        )
+
+        self.max_containers = max_containers
+        self.simulation_time = simulation_time
+        self.step_to_time = step_to_time
 
         self.render_mode = render_mode
+
+        # Create simulator for state observation definition
+        self.simulator, self.simulator_controller = create_simulator_for_training(
+            self.simulator_config,
+            self.max_containers,
+            self.simulation_time,
+            self.step_to_time,
+            debug=False,
+        )
+
         # Define action and observation space
         # They must be gym.spaces objects
         # Example when using discrete actions:
@@ -49,7 +62,7 @@ class CustomEnv(gym.Env):
 
         stopper_spaces_array = []
 
-        for _ in range(len(self.simulator.stoppers)):
+        for _ in range(len(self.simulator_config.config)):
             stopper_spaces_array.append(2)
             stopper_spaces_array.append(len(item.ProductTypeReferences) + 1)
 
@@ -70,13 +83,15 @@ class CustomEnv(gym.Env):
         }
 
     def step(self, action):
-
         terminated = False
         self.simulator.stop_simulation_signal = False
 
         product_to_load = action_to_product_type(action)
 
         self.product_serial_number_database[product_to_load] += 1
+
+        if self.simulator.stoppers["PT06"].container is None:
+            raise Exception("Container not found in PT06 stopper.")
 
         self.simulator.stoppers["PT06"].container.load(
             item.Product(
@@ -89,12 +104,14 @@ class CustomEnv(gym.Env):
         self.simulator.sim_run_steps(settings.STEPS)
 
         if not self.simulator.stop_simulation_signal:
-            terminated = True
+            truncated = False
+        else:
+            truncated = True
 
         observation = observation_from_simulator(self.simulator)
         reward = reward_from_simulator(self.simulator_controller)
 
-        truncated = False
+        terminated = False
         info: dict = {}
 
         # print("Action: ", action)
@@ -107,9 +124,12 @@ class CustomEnv(gym.Env):
         return observation, reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
-
-        self.simulator, self.simulator_controller = create_simulator(
-            self.simulator_config
+        self.simulator, self.simulator_controller = create_simulator_for_training(
+            self.simulator_config,
+            self.max_containers,
+            self.simulation_time,
+            self.step_to_time,
+            debug=False,
         )
 
         self.simulator.sim_run_steps(settings.STEPS)
@@ -119,7 +139,7 @@ class CustomEnv(gym.Env):
         return observation, {}
 
     def render(self):
-        print(observation_from_simulator(self.simulator))
+        return str(observation_from_simulator(self.simulator))
 
     def close(self):
         pass

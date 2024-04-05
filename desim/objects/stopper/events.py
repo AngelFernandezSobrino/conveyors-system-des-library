@@ -37,9 +37,13 @@ class InputEventsController:
         )
 
     def reserve(self) -> None:
-        if self.logger.level == logging.DEBUG: self.logger.debug("Reserved by input conveyor")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug("Reserved by input conveyor")
 
         if self.c.s.state.node != StateModel.Node.REST:
+            print(self.c.s.state.node)
+            print(StateModel.Node.REST)
+            print(self.c.s.state.node == StateModel.Node.REST)
             raise Exception(
                 f"Fatal error: Actual state is {self.c.s.state}, reserve event is not allowed"
             )
@@ -50,7 +54,8 @@ class InputEventsController:
         self.c.s.go_state(StateModelChange(node=StateModel.Node.RESERVED))
 
     def receive(self, container: Container) -> None:
-        if self.logger.level == logging.DEBUG: self.logger.debug(f"Receive container {container}")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug(f"Receive container {container}")
         if self.c.s.state.node != StateModel.Node.RESERVED:
             raise Exception(
                 f"Fatal error: Actual state is {self.c.s.state}, receive event is not allowed"
@@ -64,16 +69,22 @@ class InputEventsController:
     def destiny_available(
         self, destiny_conveyor_id: desim.objects.conveyor.ConveyorId
     ) -> None:
-        if self.logger.level == logging.DEBUG: self.logger.debug("Destiny is available")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug("Destiny is available")
 
         for destiny_id, conveyor in self.c.output_conveyors_by_destiny_id.items():
             if conveyor.id == destiny_conveyor_id:
-                self.c.s.go_state(StateModelChange(destinies={destiny_id: StateModel.Destiny.AVAILABLE}))
+                self.c.s.go_state(
+                    StateModelChange(
+                        destinies={destiny_id: StateModel.Destiny.AVAILABLE}
+                    )
+                )
 
     def destiny_not_available(
         self, destiny_conveyor_id: desim.objects.stopper.StopperId
     ) -> None:
-        if self.logger.level == logging.DEBUG: self.logger.debug("Destiny isn't available")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug("Destiny isn't available")
 
         for destiny_id, conveyor in self.c.output_conveyors_by_destiny_id.items():
             if conveyor.id == destiny_conveyor_id:
@@ -82,24 +93,29 @@ class InputEventsController:
     def control_lock_by_destiny_id(
         self, destiny_id_to_lock: desim.objects.stopper.StopperId
     ) -> None:
-        if self.logger.level == logging.DEBUG: self.logger.debug("Control lock")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug("Control lock")
 
         self.c.s.go_state_control_lock(destiny_id_to_lock)
 
     def control_unlock_by_destiny_id(
         self, context, destiny_id_to_lock: desim.objects.stopper.StopperId
     ) -> None:
-        if self.logger.level == logging.DEBUG: self.logger.debug("Control unlock")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug("Control unlock")
 
         if self.c.s.state.control[destiny_id_to_lock] == StateModel.Control.UNLOCKED:
             return
 
-        self.c.s.go_state(StateModelChange(control={destiny_id_to_lock: StateModel.Control.UNLOCKED}))
+        self.c.s.go_state(
+            StateModelChange(control={destiny_id_to_lock: StateModel.Control.UNLOCKED})
+        )
 
     def control_lock_by_conveyor_id(
         self, destiny_conveyor_id_to_lock: desim.objects.conveyor.ConveyorId
     ) -> None:
-        if self.logger.level == logging.DEBUG: self.logger.debug("Control lock")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug("Control lock")
 
         for destiny_id, conveyor in self.c.output_conveyors_by_destiny_id.items():
             if conveyor.id == destiny_conveyor_id_to_lock:
@@ -109,13 +125,16 @@ class InputEventsController:
     def control_unlock_by_conveyor_id(
         self, destiny_conveyor_id_to_unlock: desim.objects.conveyor.ConveyorId
     ) -> None:
-        if self.logger.level == logging.DEBUG: self.logger.debug("Control unlock")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug("Control unlock")
 
         for destiny_id, conveyor in self.c.output_conveyors_by_destiny_id.items():
             if conveyor.id == destiny_conveyor_id_to_unlock:
                 if self.c.s.state.control[destiny_id] == StateModel.Control.UNLOCKED:
                     return
-                self.c.s.go_state(StateModelChange(control={destiny_id: StateModel.Control.UNLOCKED}))
+                self.c.s.go_state(
+                    StateModelChange(control={destiny_id: StateModel.Control.UNLOCKED})
+                )
                 return
 
 
@@ -130,14 +149,16 @@ class OutputEventsController:
         )
 
     def reserve(self, destinyId: StopperId):
-        if self.logger.level == logging.DEBUG: self.logger.debug(f"Reserve {destinyId}")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug(f"Reserve {destinyId}")
         if self.c.container is None:
             raise Exception("Fatal Error: Tray is None, WTF")
 
         self.c.output_conveyors_by_destiny_id[destinyId].i.reserve()
 
     def send(self, destiny_id: StopperId):
-        if self.logger.level == logging.DEBUG: self.logger.debug(f"Send {self.c.container} to {destiny_id}")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug(f"Send {self.c.container} to {destiny_id}")
         if self.c.container is None:
             raise Exception("Fatal Error: Tray is None, WTF")
         container = self.c.container
@@ -145,12 +166,14 @@ class OutputEventsController:
         self.c.output_conveyors_by_destiny_id[destiny_id].i.receive(container)
 
     def available(self):
-        if self.logger.level == logging.DEBUG: self.logger.debug("I'm available")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug("I'm available")
         for conveyor in self.c.input_conveyors_by_destiny_id.values():
             if self.c.s.state.node == StateModel.Node.REST:
                 conveyor.i.destiny_available()
 
     def not_available(self):
-        if self.logger.level == logging.DEBUG: self.logger.debug("I'm not available")
+        if self.logger.level == logging.DEBUG:
+            self.logger.debug("I'm not available")
         for conveyor in self.c.input_conveyors_by_destiny_id.values():
             conveyor.i.destiny_not_available()

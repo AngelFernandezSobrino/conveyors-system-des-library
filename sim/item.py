@@ -27,3 +27,6 @@ class Product:
 
     def update_state(self, new_state):
         self.state = new_state
+
+    def dump(self) -> str:
+        return f"Item id: {self.id} Model: {str(self.item_type)} State: {self.state} Data: {self.data}"

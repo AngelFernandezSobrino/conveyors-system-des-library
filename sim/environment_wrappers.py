@@ -59,7 +59,7 @@ def observation_from_simulator(simulator: desim.core.Simulation[item.Product]):
     return np.array([*stopper_observation, *conveyor_observation])
 
 
-def reward_from_simulator(controller: sim.controller.SimulationController):
+def reward_from_simulator(controller: sim.controller.SimulationControllerBaseline):
 
     step = controller.simulation.timed_events_manager.step
 

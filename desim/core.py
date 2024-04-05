@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     import desim.objects.conveyor
     from typing import Callable
 
+from desim.objects.container import ContentType
 
 import logging
 
@@ -37,8 +38,6 @@ base_logger.debug("imported")
 
 logger = logging.getLogger("desim.core")
 logger.debug("imported")
-
-ContentType = TypeVar("ContentType")
 
 
 class Simulation(Generic[ContentType]):
@@ -62,7 +61,7 @@ class Simulation(Generic[ContentType]):
 
         self.stopper_external_events_controller = ExternalFunctionController()
 
-        self.system_external_events: dict[Step, list[CustomEventListener]]
+        self.system_external_events: dict[Step, list[CustomEventListener]] = {}
 
         self.callback_after_step_event: Callable[[Simulation], None] | None
 
@@ -122,14 +121,11 @@ class Simulation(Generic[ContentType]):
         self.containers: list[Container] = []
 
     def register_external_events(
-        self,
-        system_external_events: dict[Step, list[CustomEventListener]],
-        callback_after_step_event: Callable[[Simulation], None] | None = None,
+        self, system_external_events: dict[Step, list[CustomEventListener]]
     ):
-        self.system_external_events = system_external_events
-        self.callback_after_step_event = callback_after_step_event
+        self.system_external_events.update(system_external_events)
 
-        for step, events in self.system_external_events.items():
+        for step, events in system_external_events.items():
             for event in events:
                 self.timed_events_manager.add(event, step)
 
@@ -165,8 +161,6 @@ class Simulation(Generic[ContentType]):
             self.timed_events_manager.step < steps and not self.stop_simulation_signal
         ):
             self.timed_events_manager.run()
-            # if self.callback_after_step_event:
-            #     self.callback_after_step_event(self)
 
     def sim_run_forever(self):
         try:
@@ -179,3 +173,19 @@ class Simulation(Generic[ContentType]):
                 return
             else:
                 self.sim_run_forever()
+
+    def dump(self):
+        """
+        Dump the state of the simulation. Print all stoppers and conveyors states, and all containers in the system, with their respective states and contents.
+        """
+        result = "Simulation: \n"
+        for stopper in self.stoppers.values():
+            result += stopper.dump() + "\n"
+
+        for conveyor in self.conveyors.values():
+            result += conveyor.dump() + "\n"
+
+        for container in self.containers:
+            result += container.dump() + "\n"
+
+        return result

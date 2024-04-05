@@ -1,7 +1,13 @@
 from __future__ import annotations
-from typing import Generic, TypeVar
+from typing import Generic, Protocol, TypeVar
 
-ContentType = TypeVar("ContentType")
+
+class Dumpable(Protocol):
+    def dump(self) -> str:
+        raise NotImplementedError("Method not implemented")
+
+
+ContentType = TypeVar("ContentType", bound=Dumpable)
 
 ContainerId = str
 
@@ -24,3 +30,8 @@ class Container(Generic[ContentType]):
         content = self.content
         self.content = None
         return content
+
+    def dump(self):
+        return (
+            f"Container {self.id} - {self.content.dump() if self.content else 'Empty'}"
+        )

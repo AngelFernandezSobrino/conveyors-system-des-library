@@ -41,7 +41,7 @@ results["conveyors_moving"] = {0: 0.0}
 
 
 def save_actual_results(
-    context=None, controller: sim.controller.SimulationController | None = None
+    context=None, controller: sim.controller.SimulationControllerBaseline | None = None
 ) -> None:
     if controller is None:
         return

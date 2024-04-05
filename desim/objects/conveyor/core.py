@@ -9,6 +9,7 @@ from desim.custom_logging import (
     LOGGER_NAME_PADDING,
     LOGGER_CONVEYOR_COLOR,
 )
+from desim.objects.container import ContentType
 
 from . import events, states
 
@@ -20,8 +21,6 @@ if TYPE_CHECKING:
     import desim.objects.conveyor
     import desim.objects.stopper
     import desim.core
-
-ContentType = TypeVar("ContentType")
 
 
 class ConveyorDescription(TypedDict):
@@ -72,3 +71,6 @@ class Conveyor(Generic[ContentType]):
 
     def set_destiny(self, destiny: desim.objects.stopper.core.Stopper) -> None:
         self.destiny = destiny
+
+    def dump(self):
+        return f"Conveyor {self.id} - {self.s.dump()}"

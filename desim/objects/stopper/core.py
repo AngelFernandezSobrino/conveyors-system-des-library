@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ast import Return
 from typing import (
     Dict,
     Generic,
@@ -13,6 +14,7 @@ from desim.custom_logging import (
     LOGGER_STOPPER_NAME,
     get_logger,
 )
+from desim.objects.container import ContentType
 
 from . import events
 from . import states
@@ -27,6 +29,7 @@ if TYPE_CHECKING:
     from desim.events_manager import TimedEventsManager
     import desim.core
     import desim.objects.stopper
+    import desim.objects.conveyor
 
 
 class StopperDescription(TypedDict):
@@ -36,9 +39,6 @@ class StopperDescription(TypedDict):
     rest_steps: list[int]
     default_locked: bool
     priority: int
-
-
-ContentType = TypeVar("ContentType")
 
 
 class Stopper(Generic[ContentType]):
@@ -73,11 +73,19 @@ class Stopper(Generic[ContentType]):
             self.simulation.description,
         )
 
-        self.output_conveyors_by_destiny_id: Dict[desim.objects.stopper.StopperId, Conveyor] = {}
-        self.input_conveyors_by_destiny_id: Dict[desim.objects.stopper.StopperId, Conveyor] = {}
+        self.output_conveyors_by_destiny_id: Dict[
+            desim.objects.stopper.StopperId, Conveyor
+        ] = {}
+        self.input_conveyors_by_destiny_id: Dict[
+            desim.objects.stopper.StopperId, Conveyor
+        ] = {}
 
-        self.input_conveyors_by_conveyor_id: Dict[desim.objects.conveyor.ConveyorId, Conveyor] = {}
-        self.output_conveyors_by_conveyor_id: Dict[desim.objects.conveyor.ConveyorId, Conveyor] = {}
+        self.input_conveyors_by_conveyor_id: Dict[
+            desim.objects.conveyor.ConveyorId, Conveyor
+        ] = {}
+        self.output_conveyors_by_conveyor_id: Dict[
+            desim.objects.conveyor.ConveyorId, Conveyor
+        ] = {}
 
         # Container storage pointer
         self.container: Container[ContentType] | None = None
@@ -111,6 +119,13 @@ class Stopper(Generic[ContentType]):
 
         if output_conveyor not in self.output_conveyors_by_conveyor_id:
             self.output_conveyors_by_conveyor_id[output_conveyor.id] = output_conveyor
+
+    def dump(self):
+        """
+        Return the stopper information and state
+        """
+        return f"Stopper: {self.id} - {self.s.dump()}"
+
 
 class BehaviorInfo:
     def __init__(self, stopper_id, stopper_description, simulation_description):

@@ -58,7 +58,6 @@ class StateController:
         self.state: StateModel = StateModel(StateModel.S.AVAILABLE)
         self.state_change_id = 0
 
-
     def go_state(self, context: Any, state: StateModel) -> None:
         # if self.logger.level == logging.DEBUG:
         #     self.logger.debug(f"From {self.state} -> To {state}")
@@ -95,3 +94,6 @@ class StateController:
             case StateModel(StateModel.S.NOT_AVAILABLE_BY_MOVING):
                 self.go_state(None, state=StateModel(StateModel.S.WAITING_RECEIVE))
                 return
+
+    def dump(self):
+        return f"{self.state.state.name}"

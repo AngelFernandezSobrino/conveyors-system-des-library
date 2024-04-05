@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from desim.objects.stopper import StopperId
     from . import core
 
+
 @dataclass
 class StateModel:
     class Node(Enum):
@@ -68,13 +69,15 @@ class StateModel:
     def __str__(self) -> str:
         return f"States(node={self.node.name}, sends={self.sends}, destinies={self.destinies}, control={self.control})"
 
+
 @dataclass
 class StateModelChange:
 
-    node: StateModel.Node = None
-    sends: Dict[StopperId, StateModel.Send] = None
-    destinies: Dict[StopperId, StateModel.Destiny] = None
-    control: Dict[StopperId, StateModel.Control] = None
+    node: StateModel.Node | None = None
+    sends: Dict[StopperId, StateModel.Send] | None = None
+    destinies: Dict[StopperId, StateModel.Destiny] | None = None
+    control: Dict[StopperId, StateModel.Control] | None = None
+
 
 def simplified_string(self: StateModel | StateModelChange) -> str:
     result = ""
@@ -87,6 +90,7 @@ def simplified_string(self: StateModel | StateModelChange) -> str:
     if self.control is not None:
         result += f"control {self.control}"
     return result
+
 
 class StateController:
     def __init__(self, core: core.Stopper) -> None:
@@ -167,18 +171,18 @@ class StateController:
 
         if state_changes.node is not None:
             if (
-                    prev_state_node == StateModel.Node.REST
-                    and self.state != StateModel.Node.REST
+                prev_state_node == StateModel.Node.REST
+                and self.state != StateModel.Node.REST
             ):
                 self.end_state_node_rest()
             elif (
-                    prev_state_node == StateModel.Node.OCCUPIED
-                    and self.state != StateModel.Node.OCCUPIED
+                prev_state_node == StateModel.Node.OCCUPIED
+                and self.state != StateModel.Node.OCCUPIED
             ):
                 self.end_state_node_occupied()
             elif (
-                    prev_state_node == StateModel.Node.SENDING
-                    and self.state != StateModel.Node.SENDING
+                prev_state_node == StateModel.Node.SENDING
+                and self.state != StateModel.Node.SENDING
             ):
                 self.end_state_node_sending()
 
@@ -192,16 +196,30 @@ class StateController:
 
         if self.state.node == StateModel.Node.OCCUPIED:
             for destiny_id, destiny in self.state.destinies.items():
-                if destiny == StateModel.Destiny.AVAILABLE and self.state.control[destiny_id] == StateModel.Control.UNLOCKED:
-                    self.go_state(StateModelChange(node=StateModel.Node.SENDING, sends={ destiny_id: StateModel.Send.ONGOING }, destinies={destiny_id: StateModel.Destiny.NOT_AVAILABLE}))
+                if (
+                    destiny == StateModel.Destiny.AVAILABLE
+                    and self.state.control[destiny_id] == StateModel.Control.UNLOCKED
+                ):
+                    self.go_state(
+                        StateModelChange(
+                            node=StateModel.Node.SENDING,
+                            sends={destiny_id: StateModel.Send.ONGOING},
+                            destinies={destiny_id: StateModel.Destiny.NOT_AVAILABLE},
+                        )
+                    )
                     return
 
         if self.state.node == StateModel.Node.SENDING:
             for destiny_id, destiny_state in self.state.destinies.items():
                 if self.state.sends[destiny_id] == StateModel.Send.ONGOING:
-                    self.go_state(StateModelChange(sends={ destiny_id: StateModel.Send.DELAY }))
+                    self.go_state(
+                        StateModelChange(sends={destiny_id: StateModel.Send.DELAY})
+                    )
                     return
 
                 if self.state.sends[destiny_id] == StateModel.Send.DELAY:
                     self.go_state(StateModelChange(node=StateModel.Node.REST))
                     return
+
+    def dump(self):
+        return f"{self.state.node.name} - {self.state.sends} - {self.state.destinies} - {self.state.control}"
